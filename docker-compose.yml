@@ -2,21 +2,22 @@ services:
   db:
     image: postgres:17
     container_name: informya_db
-    restart: always
+    restart: always  # Redémarre automatiquement si le container crash
     environment:
       POSTGRES_USER: informya
       POSTGRES_PASSWORD: password
       POSTGRES_DB: informya
     ports:
-      - "5432:5432"
+      - "5432:5432"  # port_hôte:port_container
     volumes:
+      # Données persistantes — survivent à un docker compose down
       - postgres_data:/var/lib/postgresql/data
-    # Vérifie que PostgreSQL est vraiment prêt à accepter des connexions
     healthcheck:
+      # Vérifie que PostgreSQL accepte vraiment les connexions
       test: ["CMD-SHELL", "pg_isready -U informya -d informya"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      interval: 5s   # Vérifie toutes les 5s
+      timeout: 5s    # Abandon après 5s sans réponse
+      retries: 5     # 5 échecs → container marqué "unhealthy"
 
   redis:
     image: redis:8
@@ -24,29 +25,46 @@ services:
     restart: always
     ports:
       - "6379:6379"
-    # Vérifie que Redis répond bien
     healthcheck:
+      # "ping" → Redis répond "PONG" s'il est prêt
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   backend:
-    build: ./backend
+    build: ./backend  # Construit l'image depuis backend/Dockerfile
     container_name: informya_backend
     restart: always
     ports:
       - "8000:8000"
     env_file:
-      - .env
-    # Attend que db ET redis soient healthy avant de démarrer
+      - .env  # Injecte toutes les variables du fichier .env
     depends_on:
+      # Attend que db ET redis soient "healthy" avant de démarrer
+      # Sans ça, FastAPI crashe car PostgreSQL n'est pas encore prêt
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
+      # Monte le code local dans le container
+      # Toute modification de fichier est visible instantanément (--reload)
       - ./backend:/app
 
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: informya_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@informya.com  # Login PgAdmin
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"  # Accessible sur http://localhost:5050
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
+  # Volume nommé Docker — données PostgreSQL persistantes entre les restarts
   postgres_data:
