@@ -1,0 +1,29 @@
+# Cache Python
+
+**pycache**
+_.pyc
+_.pyo
+.pytest_cache
+
+# Environnement virtuel
+
+.venv
+venv
+
+# Variables d'environnement — ne jamais copier dans l'image
+
+.env
+\*.env.local
+
+# Logs
+
+\*.log
+logs/
+
+# Tests — inutiles dans l'image de prod
+
+tests/
+
+# Alembic versions (on les gèrera plus tard)
+
+# alembic/versions/
