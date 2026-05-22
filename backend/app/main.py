@@ -4,10 +4,8 @@ from contextlib import asynccontextmanager
 
 from app.core.database import init_db
 from app.core.config import settings
-
-# Import des modèles OBLIGATOIRE avant init_db()
-# Sans ça, SQLAlchemy ne sait pas quelles tables créer
 from app.models import User, Article, ReadHistory, Bookmark, SharedArticle
+from app.routers import auth
 
 
 @asynccontextmanager
@@ -29,6 +27,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Routes
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 
 
 @app.get("/health")
