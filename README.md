@@ -125,57 +125,6 @@ cp .env.example .env
 docker compose up --build
 ```
 
-### Available URLs
-
-| Service | URL |
-|---|---|
-| FastAPI | http://localhost:8000 |
-| Swagger Docs | http://localhost:8000/docs |
-| PgAdmin | http://localhost:5050 |
-
-### PgAdmin Credentials
-
-```
-Email    : admin@informya.com
-Password : admin
-
-PostgreSQL Server:
-  Host     : db
-  Port     : 5432
-  Database : informya
-  Username : informya
-  Password : password
-```
-
-### Environment Variables
-
-```env
-DATABASE_URL=postgresql+asyncpg://informya:password@db:5432/informya
-REDIS_URL=redis://redis:6379
-SECRET_KEY=                  # openssl rand -hex 32
-ANTHROPIC_API_KEY=           # Claude API
-NEWS_API_KEY=                # NewsAPI
-ALPHA_VANTAGE_KEY=           # Stock market
-```
-
----
-
-## API Routes
-
-### Auth
-| Method | Route | Description |
-|---|---|---|
-| POST | `/auth/register` | Create an account |
-| POST | `/auth/login` | Sign in — returns a JWT token |
-| GET | `/auth/me` | Current user profile 🔒 |
-
-### Health
-| Method | Route | Description |
-|---|---|---|
-| GET | `/health` | Check server status |
-
----
-
 ## Roadmap
 
 **Phase 1 — MVP** *(in progress)*
