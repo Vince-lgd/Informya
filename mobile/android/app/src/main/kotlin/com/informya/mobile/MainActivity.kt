@@ -1,0 +1,5 @@
+package com.informya.mobile
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
