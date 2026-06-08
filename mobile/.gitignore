@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Xcode generated files
+ios/Flutter/ephemeral/
+ios/.symlinks/
+ios/Pods/
+*.resolved
