@@ -16,42 +16,57 @@ class _FeedScreenState extends State<FeedScreen> {
   bool _hasMore = true;
   String? _selectedCategory;
 
+  @override
+void initState() {
+  super.initState();
+
+  _isLoading = false;
+  _loadFeed(refresh: true);
+}
+
   final List<String> _categories = [
-    'Tout', 'politique', 'sport', 'bourse', 'tech', 'art', 'science'
+    'Tout', 'Politique', 'Sport', 'Bourse', 'Tech', 'Art', 'Science'
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadFeed();
-  }
+Future<void> _loadFeed({bool refresh = false}) async {
+  if (_isLoading) return;
 
-  Future<void> _loadFeed({bool refresh = false}) async {
+  setState(() {
+    _isLoading = true;
+
     if (refresh) {
-      setState(() {
-        _currentPage = 1;
-        _articles = [];
-        _hasMore = true;
-      });
+      _currentPage = 1;
+      _articles = [];
+      _hasMore = true;
     }
+  });
 
-    setState(() => _isLoading = true);
+  try {
+    final result = await ApiService.getFeed(
+      page: _currentPage,
+      category: _selectedCategory == 'Tout'
+          ? null
+          : _selectedCategory?.toLowerCase(),
+    );
 
-    try {
-      final result = await ApiService.getFeed(
-        page: _currentPage,
-        category: _selectedCategory == 'Tout' ? null : _selectedCategory,
-      );
+    final List<dynamic> newArticles = result['articles'] ?? [];
 
-      setState(() {
-        _articles.addAll(result['articles'] ?? []);
-        _hasMore = result['has_more'] ?? false;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
+    setState(() {
+      if (refresh) {
+        _articles = newArticles;
+      } else {
+        _articles.addAll(newArticles);
+      }
+
+      _hasMore = result['has_more'] ?? false;
+      _isLoading = false;
+    });
+  } catch (e) {
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +74,6 @@ class _FeedScreenState extends State<FeedScreen> {
       backgroundColor: const Color(0xFF99B4A0),
       body: Stack(
         children: [
-          // Cercles décoratifs
           Positioned(
             top: -60,
             right: -60,
@@ -75,7 +89,6 @@ class _FeedScreenState extends State<FeedScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
                   child: Row(
@@ -90,7 +103,6 @@ class _FeedScreenState extends State<FeedScreen> {
                           letterSpacing: -0.5,
                         ),
                       ),
-                      // Bouton déconnexion
                       GestureDetector(
                         onTap: () async {
                           await ApiService.clearToken();
@@ -126,7 +138,6 @@ class _FeedScreenState extends State<FeedScreen> {
 
                 const SizedBox(height: 20),
 
-                // Filtres catégories
                 SizedBox(
                   height: 38,
                   child: ListView.builder(
@@ -179,7 +190,6 @@ class _FeedScreenState extends State<FeedScreen> {
 
                 const SizedBox(height: 20),
 
-                // Liste des articles
                 Expanded(
                   child: _isLoading && _articles.isEmpty
                       ? const Center(
@@ -194,16 +204,24 @@ class _FeedScreenState extends State<FeedScreen> {
                             itemCount: _articles.length + (_hasMore ? 1 : 0),
                             itemBuilder: (context, index) {
                               if (index == _articles.length) {
-                                _currentPage++;
-                                _loadFeed();
-                                return const Padding(
-                                  padding: EdgeInsets.all(20),
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                );
+                                if (_hasMore && !_isLoading) {
+                                Future.microtask(() {
+                                  if (mounted) {
+                                    _currentPage++;
+                                    _loadFeed();
+                                  }
+                                });
+                              }
+                                return _isLoading
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(20),
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : const SizedBox.shrink();
                               }
                               return _ArticleCard(article: _articles[index]);
                             },
@@ -238,15 +256,67 @@ class _ArticleCard extends StatelessWidget {
 
   const _ArticleCard({required this.article});
 
+  Color _categoryColor(String? category) {
+    switch (category) {
+      case 'politique': return const Color(0xFF0288D1);
+      case 'sport':     return const Color(0xFF27AE60);
+      case 'bourse':    return const Color(0xFFF39C12);
+      case 'tech':      return const Color(0xFF8E44AD);
+      case 'art':       return const Color(0xFFE91E8C);
+      case 'science':   return const Color(0xFF8D6E63);
+      default:          return const Color(0xFF95A5A6);
+    }
+  }
+
+  String _categoryEmoji(String? category) {
+    switch (category) {
+      case 'politique': return '🏛️';
+      case 'sport':     return '⚽';
+      case 'bourse':    return '📈';
+      case 'tech':      return '💻';
+      case 'art':       return '🎨';
+      case 'science':   return '🔬';
+      default:          return '📰';
+    }
+  }
+
+  String _biasLabel(String? bias) {
+    switch (bias) {
+      case 'left':         return 'Gauche';
+      case 'center-left':  return 'Centre-G';
+      case 'center':       return 'Centre';
+      case 'center-right': return 'Centre-D';
+      case 'right':        return 'Droite';
+      default:             return '';
+    }
+  }
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+      if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
+      if (diff.inHours < 24)   return 'Il y a ${diff.inHours}h';
+      return 'Il y a ${diff.inDays}j';
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final category = article['category'];
+    final color = _categoryColor(category);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: color.withOpacity(0.2),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -257,7 +327,6 @@ class _ArticleCard extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: Container(
-            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.25),
               borderRadius: BorderRadius.circular(20),
@@ -266,85 +335,109 @@ class _ArticleCard extends StatelessWidget {
                 width: 1.5,
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Source + biais
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        article['source_name'] ?? '',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+            child: IntrinsicHeight(
+              child: Row(
+               children: [
+                  // Contenu
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Source + catégorie
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: color.withOpacity(0.5),
+                                  ),
+                                ),
+                                child: Text(
+                                  article['source_name'] ?? '',
+                                  style: TextStyle(
+                                    color: color,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_categoryEmoji(category)} $category',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Titre
+                          Text(
+                            article['title'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              height: 1.4,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Date + biais
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _formatDate(article['published_at']),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (article['source_bias'] != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    _biasLabel(article['source_bias']),
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.8),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      article['category'] ?? '',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Titre
-                Text(
-                  article['title'] ?? '',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    height: 1.4,
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-
-                const SizedBox(height: 12),
-
-                // Date
-                Text(
-                  _formatDate(article['published_at']),
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
-  }
-
-  String _formatDate(String? dateStr) {
-    if (dateStr == null) return '';
-    try {
-      final date = DateTime.parse(dateStr);
-      final now = DateTime.now();
-      final diff = now.difference(date);
-      if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
-      if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
-      return 'Il y a ${diff.inDays}j';
-    } catch (_) {
-      return '';
-    }
   }
 }

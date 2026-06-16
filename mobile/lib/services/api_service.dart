@@ -3,7 +3,16 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 // URL de ton backend — en local pour le dev
-const String baseUrl = 'http://localhost:8000';
+import 'dart:io';
+
+// Détecte automatiquement la bonne URL selon la plateforme
+String get baseUrl {
+  if (Platform.isAndroid) {
+    return 'http://10.0.2.2:8000';  // Émulateur Android
+  } else {
+    return 'http://localhost:8000';  // iOS simulateur Mac
+  }
+}
 
 class ApiService {
   // ── Auth ──────────────────────────────────────────────────
