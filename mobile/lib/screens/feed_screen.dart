@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'article_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -91,48 +92,14 @@ Future<void> _loadFeed({bool refresh = false}) async {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Informya',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () async {
-                          await ApiService.clearToken();
-                          if (mounted) {
-                            Navigator.pushReplacementNamed(context, '/login');
-                          }
-                        },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.logout_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: const Text(
+                    'Informya',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ),
 
@@ -223,7 +190,21 @@ Future<void> _loadFeed({bool refresh = false}) async {
                                       )
                                     : const SizedBox.shrink();
                               }
-                              return _ArticleCard(article: _articles[index]);
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ArticleScreen(
+                                        article: _articles[index],
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: _ArticleCard(
+                                  article: _articles[index],
+                                ),
+                              );
                             },
                           ),
                         ),

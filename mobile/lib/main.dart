@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
-import 'screens/feed_screen.dart';
+import 'screens/main_screen.dart';
 import 'services/api_service.dart';
 
 void main() {
@@ -25,13 +25,12 @@ class InformyaApp extends StatelessWidget {
       home: const AuthGate(),
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/feed': (context) => const FeedScreen(),
+        '/feed': (context) => const MainScreen(),
       },
     );
   }
 }
 
-// Vérifie si l'utilisateur est déjà connecté
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
