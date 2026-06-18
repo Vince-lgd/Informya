@@ -102,6 +102,15 @@ class ApiService {
   }
 
   // ── Bookmarks ─────────────────────────────────────────────
+  static Future<List<dynamic>> getBookmarks() async {
+    final headers = await _authHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/bookmarks'),
+      headers: headers,
+    );
+    return jsonDecode(response.body);
+  }
+
   static Future<void> addBookmark(String articleId) async {
     final headers = await _authHeaders();
     await http.post(

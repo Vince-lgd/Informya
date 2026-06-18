@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result.containsKey('access_token')) {
         await ApiService.saveToken(result['access_token']);
         if (mounted) {
-              Navigator.pushReplacementNamed(context, '/feed');
+          Navigator.pushReplacementNamed(context, '/feed');
         }
       } else {
         setState(() {
@@ -113,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? 'Rejoins Informya'
                         : 'Content de te revoir sur Informya',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 18,
                       fontWeight: FontWeight.w400,
                     ),
@@ -127,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(28),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withValues(alpha: 0.08),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -140,10 +140,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.25),
+                            color: Colors.white.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(28),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.4),
+                              color: Colors.white.withValues(alpha: 0.4),
                               width: 1.5,
                             ),
                           ),
@@ -176,10 +176,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.red.withOpacity(0.15),
+                                    color: Colors.red.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: Colors.red.withOpacity(0.4),
+                                      color: Colors.red.withValues(alpha: 0.4),
                                     ),
                                   ),
                                   child: Text(
@@ -208,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(18),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
@@ -222,10 +222,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: double.infinity,
                             height: 58,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.35),
+                              color: Colors.white.withValues(alpha: 0.35),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.6),
+                                color: Colors.white.withValues(alpha: 0.6),
                                 width: 1.5,
                               ),
                             ),
@@ -267,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? 'Déjà un compte ? '
                               : 'Pas encore de compte ? ',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 15,
                           ),
                           children: const [
@@ -302,7 +302,7 @@ class _LoginScreenState extends State<LoginScreen> {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: color.withOpacity(0.6),
+          color: color.withValues(alpha: 0.6),
         ),
       ),
     );
@@ -321,11 +321,9 @@ class _LoginScreenState extends State<LoginScreen> {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
+            color: Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
           ),
           child: TextField(
             controller: controller,
@@ -340,13 +338,13 @@ class _LoginScreenState extends State<LoginScreen> {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 18,
                 fontWeight: FontWeight.w400,
               ),
               prefixIcon: Icon(
                 icon,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 size: 20,
               ),
               border: InputBorder.none,

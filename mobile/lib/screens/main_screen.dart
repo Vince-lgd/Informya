@@ -30,10 +30,10 @@ class _MainScreenState extends State<MainScreen> {
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               border: Border(
                 top: BorderSide(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -98,18 +98,18 @@ class _NavItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withOpacity(0.25)
+              ? Colors.white.withValues(alpha: 0.25)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: isSelected
-              ? Border.all(color: Colors.white.withOpacity(0.4))
+              ? Border.all(color: Colors.white.withValues(alpha: 0.4))
               : null,
         ),
         child: Row(
           children: [
             Icon(
               icon,
-              color: Colors.white.withOpacity(isSelected ? 1 : 0.5),
+              color: Colors.white.withValues(alpha: isSelected ? 1 : 0.5),
               size: 22,
             ),
             if (isSelected) ...[

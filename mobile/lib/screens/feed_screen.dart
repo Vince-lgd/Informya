@@ -18,56 +18,62 @@ class _FeedScreenState extends State<FeedScreen> {
   String? _selectedCategory;
 
   @override
-void initState() {
-  super.initState();
+  void initState() {
+    super.initState();
 
-  _isLoading = false;
-  _loadFeed(refresh: true);
-}
+    _isLoading = false;
+    _loadFeed(refresh: true);
+  }
 
   final List<String> _categories = [
-    'Tout', 'Politique', 'Sport', 'Bourse', 'Tech', 'Art', 'Science'
+    'Tout',
+    'Politique',
+    'Sport',
+    'Bourse',
+    'Tech',
+    'Art',
+    'Science',
   ];
 
-Future<void> _loadFeed({bool refresh = false}) async {
-  if (_isLoading) return;
-
-  setState(() {
-    _isLoading = true;
-
-    if (refresh) {
-      _currentPage = 1;
-      _articles = [];
-      _hasMore = true;
-    }
-  });
-
-  try {
-    final result = await ApiService.getFeed(
-      page: _currentPage,
-      category: _selectedCategory == 'Tout'
-          ? null
-          : _selectedCategory?.toLowerCase(),
-    );
-
-    final List<dynamic> newArticles = result['articles'] ?? [];
+  Future<void> _loadFeed({bool refresh = false}) async {
+    if (_isLoading) return;
 
     setState(() {
+      _isLoading = true;
+
       if (refresh) {
-        _articles = newArticles;
-      } else {
-        _articles.addAll(newArticles);
+        _currentPage = 1;
+        _articles = [];
+        _hasMore = true;
       }
+    });
 
-      _hasMore = result['has_more'] ?? false;
-      _isLoading = false;
-    });
-  } catch (e) {
-    setState(() {
-      _isLoading = false;
-    });
+    try {
+      final result = await ApiService.getFeed(
+        page: _currentPage,
+        category: _selectedCategory == 'Tout'
+            ? null
+            : _selectedCategory?.toLowerCase(),
+      );
+
+      final List<dynamic> newArticles = result['articles'] ?? [];
+
+      setState(() {
+        if (refresh) {
+          _articles = newArticles;
+        } else {
+          _articles.addAll(newArticles);
+        }
+
+        _hasMore = result['has_more'] ?? false;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -128,20 +134,20 @@ Future<void> _loadFeed({bool refresh = false}) async {
                           ),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? Colors.white.withOpacity(0.35)
-                                : Colors.white.withOpacity(0.15),
+                                ? Colors.white.withValues(alpha: 0.35)
+                                : Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: Colors.white.withOpacity(
-                                isSelected ? 0.6 : 0.2,
+                              color: Colors.white.withValues(
+                                alpha: isSelected ? 0.6 : 0.2,
                               ),
                             ),
                           ),
                           child: Text(
                             cat,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(
-                                isSelected ? 1 : 0.7,
+                              color: Colors.white.withValues(
+                                alpha: isSelected ? 1 : 0.7,
                               ),
                               fontSize: 13,
                               fontWeight: isSelected
@@ -172,13 +178,13 @@ Future<void> _loadFeed({bool refresh = false}) async {
                             itemBuilder: (context, index) {
                               if (index == _articles.length) {
                                 if (_hasMore && !_isLoading) {
-                                Future.microtask(() {
-                                  if (mounted) {
-                                    _currentPage++;
-                                    _loadFeed();
-                                  }
-                                });
-                              }
+                                  Future.microtask(() {
+                                    if (mounted) {
+                                      _currentPage++;
+                                      _loadFeed();
+                                    }
+                                  });
+                                }
                                 return _isLoading
                                     ? const Padding(
                                         padding: EdgeInsets.all(20),
@@ -201,9 +207,7 @@ Future<void> _loadFeed({bool refresh = false}) async {
                                     ),
                                   );
                                 },
-                                child: _ArticleCard(
-                                  article: _articles[index],
-                                ),
+                                child: _ArticleCard(article: _articles[index]),
                               );
                             },
                           ),
@@ -225,7 +229,7 @@ Future<void> _loadFeed({bool refresh = false}) async {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: color.withOpacity(0.6),
+          color: color.withValues(alpha: 0.6),
         ),
       ),
     );
@@ -239,36 +243,56 @@ class _ArticleCard extends StatelessWidget {
 
   Color _categoryColor(String? category) {
     switch (category) {
-      case 'politique': return const Color(0xFF0288D1);
-      case 'sport':     return const Color(0xFF27AE60);
-      case 'bourse':    return const Color(0xFFF39C12);
-      case 'tech':      return const Color(0xFF8E44AD);
-      case 'art':       return const Color(0xFFE91E8C);
-      case 'science':   return const Color(0xFF8D6E63);
-      default:          return const Color(0xFF95A5A6);
+      case 'politique':
+        return const Color(0xFF0288D1);
+      case 'sport':
+        return const Color(0xFF27AE60);
+      case 'bourse':
+        return const Color(0xFFF39C12);
+      case 'tech':
+        return const Color(0xFF8E44AD);
+      case 'art':
+        return const Color(0xFFE91E8C);
+      case 'science':
+        return const Color(0xFF8D6E63);
+      default:
+        return const Color(0xFF95A5A6);
     }
   }
 
   String _categoryEmoji(String? category) {
     switch (category) {
-      case 'politique': return '🏛️';
-      case 'sport':     return '⚽';
-      case 'bourse':    return '📈';
-      case 'tech':      return '💻';
-      case 'art':       return '🎨';
-      case 'science':   return '🔬';
-      default:          return '📰';
+      case 'politique':
+        return '🏛️';
+      case 'sport':
+        return '⚽';
+      case 'bourse':
+        return '📈';
+      case 'tech':
+        return '💻';
+      case 'art':
+        return '🎨';
+      case 'science':
+        return '🔬';
+      default:
+        return '📰';
     }
   }
 
   String _biasLabel(String? bias) {
     switch (bias) {
-      case 'left':         return 'Gauche';
-      case 'center-left':  return 'Centre-G';
-      case 'center':       return 'Centre';
-      case 'center-right': return 'Centre-D';
-      case 'right':        return 'Droite';
-      default:             return '';
+      case 'left':
+        return 'Gauche';
+      case 'center-left':
+        return 'Centre-G';
+      case 'center':
+        return 'Centre';
+      case 'center-right':
+        return 'Centre-D';
+      case 'right':
+        return 'Droite';
+      default:
+        return '';
     }
   }
 
@@ -279,7 +303,7 @@ class _ArticleCard extends StatelessWidget {
       final now = DateTime.now();
       final diff = now.difference(date);
       if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
-      if (diff.inHours < 24)   return 'Il y a ${diff.inHours}h';
+      if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
       return 'Il y a ${diff.inDays}j';
     } catch (_) {
       return '';
@@ -297,7 +321,7 @@ class _ArticleCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -309,16 +333,16 @@ class _ArticleCard extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
+              color: Colors.white.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
                 width: 1.5,
               ),
             ),
             child: IntrinsicHeight(
               child: Row(
-               children: [
+                children: [
                   // Contenu
                   Expanded(
                     child: Padding(
@@ -335,10 +359,10 @@ class _ArticleCard extends StatelessWidget {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: color.withOpacity(0.15),
+                                  color: color.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: color.withOpacity(0.5),
+                                    color: color.withValues(alpha: 0.5),
                                   ),
                                 ),
                                 child: Text(
@@ -354,7 +378,7 @@ class _ArticleCard extends StatelessWidget {
                               Text(
                                 '${_categoryEmoji(category)} $category',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 14,
                                 ),
                               ),
@@ -385,7 +409,7 @@ class _ArticleCard extends StatelessWidget {
                               Text(
                                 _formatDate(article['published_at']),
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 14,
                                 ),
                               ),
@@ -396,13 +420,15 @@ class _ArticleCard extends StatelessWidget {
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.1),
+                                    color: Colors.white.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
                                     _biasLabel(article['source_bias']),
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.8),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.8,
+                                      ),
                                       fontSize: 14,
                                     ),
                                   ),
