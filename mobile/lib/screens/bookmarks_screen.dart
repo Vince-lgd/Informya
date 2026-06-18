@@ -304,33 +304,44 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                                                                   context,
                                                                 ).showSnackBar(
                                                                   SnackBar(
-                                                                    behavior:
-                                                                        SnackBarBehavior
-                                                                            .floating,
-                                                                    duration: const Duration(
-                                                                      milliseconds:
-                                                                          900,
+                                                                    content: const Row(
+                                                                      children: [
+                                                                        Icon(
+                                                                          Icons
+                                                                              .bookmark_remove_rounded,
+                                                                          color:
+                                                                              Colors.white,
+                                                                          size:
+                                                                              18,
+                                                                        ),
+                                                                        SizedBox(
+                                                                          width:
+                                                                              8,
+                                                                        ),
+                                                                        Text(
+                                                                          'Retiré des favoris',
+                                                                        ),
+                                                                      ],
                                                                     ),
                                                                     backgroundColor: Colors
                                                                         .black
                                                                         .withValues(
                                                                           alpha:
-                                                                              0.75,
+                                                                              0.8,
                                                                         ),
+                                                                    duration:
+                                                                        const Duration(
+                                                                          seconds:
+                                                                              2,
+                                                                        ),
+                                                                    behavior:
+                                                                        SnackBarBehavior
+                                                                            .floating,
                                                                     shape: RoundedRectangleBorder(
                                                                       borderRadius:
                                                                           BorderRadius.circular(
-                                                                            10,
+                                                                            12,
                                                                           ),
-                                                                    ),
-                                                                    content: const Text(
-                                                                      "Retiré des favoris",
-                                                                      style: TextStyle(
-                                                                        color: Colors
-                                                                            .white,
-                                                                        fontSize:
-                                                                            13,
-                                                                      ),
                                                                     ),
                                                                   ),
                                                                 );

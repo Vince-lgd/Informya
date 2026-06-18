@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 
@@ -16,19 +17,92 @@ class _ArticleScreenState extends State<ArticleScreen> {
   bool _isBookmarked = false;
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkIfBookmarked();
+  }
+
+  // Vérifie si l'article est déjà en favori au chargement
+  Future<void> _checkIfBookmarked() async {
+    try {
+      final bookmarks = await ApiService.getBookmarks();
+      final articleId = widget.article['id'];
+      if (mounted) {
+        setState(() {
+          _isBookmarked = bookmarks.any((b) => b['id'] == articleId);
+        });
+      }
+    } catch (e) {
+      // Erreur silencieuse
+    }
+  }
+
   Future<void> _toggleBookmark() async {
     setState(() => _isLoading = true);
     try {
       if (_isBookmarked) {
         await ApiService.removeBookmark(widget.article['id']);
+
+        // Vibration courte + notification retrait
+        await HapticFeedback.lightImpact();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(
+                    Icons.bookmark_remove_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Retiré des favoris'),
+                ],
+              ),
+              backgroundColor: Colors.black.withValues(alpha: 0.8),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
       } else {
         await ApiService.addBookmark(widget.article['id']);
+
+        // Vibration forte + notification ajout
+        await HapticFeedback.mediumImpact();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.bookmark_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 8),
+                  Text('Ajouté aux favoris !'),
+                ],
+              ),
+              backgroundColor: Colors.black.withValues(alpha: 0.8),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
       }
-      setState(() => _isBookmarked = !_isBookmarked);
+      if (mounted) {
+        setState(() => _isBookmarked = !_isBookmarked);
+      }
     } catch (e) {
       // Erreur silencieuse
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -72,6 +146,42 @@ class _ArticleScreenState extends State<ArticleScreen> {
     }
   }
 
+  String _categoryEmoji(String? category) {
+    switch (category) {
+      case 'politique':
+        return '🏛️';
+      case 'sport':
+        return '⚽';
+      case 'bourse':
+        return '📈';
+      case 'tech':
+        return '💻';
+      case 'art':
+        return '🎨';
+      case 'science':
+        return '🔬';
+      default:
+        return '📰';
+    }
+  }
+
+  String _biasLabel(String? bias) {
+    switch (bias) {
+      case 'left':
+        return 'Gauche';
+      case 'center-left':
+        return 'Centre-G';
+      case 'center':
+        return 'Centre';
+      case 'center-right':
+        return 'Centre-D';
+      case 'right':
+        return 'Droite';
+      default:
+        return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final article = widget.article;
@@ -82,7 +192,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
       backgroundColor: const Color(0xFF99B4A0),
       body: Stack(
         children: [
-          // Cercles décoratifs
           Positioned(
             top: -60,
             right: -60,
@@ -97,13 +206,11 @@ class _ArticleScreenState extends State<ArticleScreen> {
           SafeArea(
             child: Column(
               children: [
-                // Header avec retour + bookmark
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Bouton retour
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: ClipRRect(
@@ -113,10 +220,10 @@ class _ArticleScreenState extends State<ArticleScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: Colors.white.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: const Icon(
@@ -129,22 +236,24 @@ class _ArticleScreenState extends State<ArticleScreen> {
                         ),
                       ),
 
-                      // Bouton bookmark
                       GestureDetector(
                         onTap: _isLoading ? null : _toggleBookmark,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: BackdropFilter(
                             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
                                 color: _isBookmarked
-                                    ? Colors.white.withOpacity(0.4)
-                                    : Colors.white.withOpacity(0.2),
+                                    ? Colors.white.withValues(alpha: 0.4)
+                                    : Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: _isBookmarked
+                                      ? Colors.white.withValues(alpha: 0.6)
+                                      : Colors.white.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Icon(
@@ -164,14 +273,12 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
                 const SizedBox(height: 16),
 
-                // Contenu scrollable
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Badge source + catégorie
                         Row(
                           children: [
                             Container(
@@ -180,10 +287,10 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                 vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: color.withOpacity(0.15),
+                                color: color.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: color.withOpacity(0.4),
+                                  color: color.withValues(alpha: 0.4),
                                 ),
                               ),
                               child: Text(
@@ -197,18 +304,50 @@ class _ArticleScreenState extends State<ArticleScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              _formatDate(article['published_at']),
+                              '${_categoryEmoji(category)} $category',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
-                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 14,
                               ),
                             ),
                           ],
                         ),
 
+                        const SizedBox(height: 10),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatDate(article['published_at']),
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                            if (article['source_bias'] != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  _biasLabel(article['source_bias']),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+
                         const SizedBox(height: 20),
 
-                        // Titre
                         Text(
                           article['title'] ?? '',
                           style: const TextStyle(
@@ -222,7 +361,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
                         const SizedBox(height: 20),
 
-                        // Contenu / résumé
                         if (article['content'] != null) ...[
                           ClipRRect(
                             borderRadius: BorderRadius.circular(16),
@@ -231,16 +369,16 @@ class _ArticleScreenState extends State<ArticleScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
+                                  color: Colors.white.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.2),
+                                    color: Colors.white.withValues(alpha: 0.2),
                                   ),
                                 ),
                                 child: Text(
                                   article['content'],
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 15,
                                     height: 1.6,
                                   ),
@@ -251,7 +389,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
                           const SizedBox(height: 20),
                         ],
 
-                        // Bouton lire l'article complet
                         GestureDetector(
                           onTap: _openUrl,
                           child: ClipRRect(
@@ -262,24 +399,24 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.25),
+                                  color: Colors.white.withValues(alpha: 0.25),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.4),
+                                    color: Colors.white.withValues(alpha: 0.4),
                                   ),
                                 ),
-                                child: Row(
+                                child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.open_in_new_rounded,
                                       color: Colors.white,
                                       size: 18,
                                     ),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: 8),
                                     Text(
                                       'Lire l\'article complet',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 15,
                                         fontWeight: FontWeight.w600,
@@ -313,7 +450,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: color.withOpacity(0.6),
+          color: color.withValues(alpha: 0.6),
         ),
       ),
     );
