@@ -8,6 +8,7 @@ from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.article import Bookmark, Article
 from app.schemas.article import BookmarkCreate, ArticleResponse
+from app.schemas.user import UserUpdateStyle, UserResponse
 
 router = APIRouter()
 
@@ -55,6 +56,24 @@ async def add_bookmark(
     db.add(bookmark)
     await db.commit()
     return {"message": "Article ajouté aux favoris"}
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_profile(
+    data: UserUpdateStyle,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Valide que le style envoyé est autorisé
+    valid_styles = ["bullet", "journalistic", "simple"]
+    if data.reading_style not in valid_styles:
+        raise HTTPException(status_code=400, detail="Style de lecture invalide")
+
+    current_user.reading_style = data.reading_style
+    await db.commit()
+    await db.refresh(current_user)
+
+    return UserResponse.model_validate(current_user)
 
 
 @router.delete("/bookmarks/{article_id}", status_code=204)

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'feed_screen.dart';
 import 'bookmarks_screen.dart';
 import 'profile_screen.dart';
+import '../theme/app_theme.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -23,7 +24,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF99B4A0),
+      backgroundColor: AppColors.background(context),
       body: _screens[_currentIndex],
       bottomNavigationBar: ClipRRect(
         child: BackdropFilter(

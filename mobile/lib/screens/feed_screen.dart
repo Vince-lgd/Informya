@@ -1,7 +1,9 @@
 import 'dart:ui';
-import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'article_screen.dart';
+import '../theme/app_theme.dart';
+
+import 'package:flutter/material.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -78,7 +80,7 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF99B4A0),
+      backgroundColor: AppColors.background(context),
       body: Stack(
         children: [
           Positioned(

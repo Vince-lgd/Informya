@@ -1,7 +1,9 @@
 import 'dart:ui';
+import '../services/api_service.dart';
+import '../theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -68,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF99B4A0),
+      backgroundColor: AppColors.background(context),
       body: Stack(
         children: [
           // Cercles décoratifs Liquid Glass

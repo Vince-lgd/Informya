@@ -1,8 +1,10 @@
 import 'dart:ui';
+import '../services/api_service.dart';
+import '../theme/app_theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/api_service.dart';
 
 class ArticleScreen extends StatefulWidget {
   final Map<String, dynamic> article;
@@ -15,6 +17,9 @@ class ArticleScreen extends StatefulWidget {
 
 class _ArticleScreenState extends State<ArticleScreen> {
   bool _isBookmarked = false;
+  String? _aiSummary;
+  bool _isSummaryLoading = false;
+  String? _summaryError;
   bool _isLoading = false;
 
   @override
@@ -106,6 +111,25 @@ class _ArticleScreenState extends State<ArticleScreen> {
     }
   }
 
+  Future<void> _generateSummary() async {
+    setState(() {
+      _isSummaryLoading = true;
+      _summaryError = null;
+    });
+    try {
+      final result = await ApiService.getArticleSummary(widget.article['id']);
+      if (mounted) {
+        setState(() => _aiSummary = result['summary']);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _summaryError = 'Résumé indisponoible pour le moment.');
+      }
+    } finally {
+      if (mounted) setState(() => _isSummaryLoading = false);
+    }
+  }
+
   Future<void> _openUrl() async {
     final url = widget.article['url'];
     if (url != null && await canLaunchUrl(Uri.parse(url))) {
@@ -189,7 +213,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
     final color = _categoryColor(category);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF99B4A0),
+      backgroundColor: AppColors.background(context),
       body: Stack(
         children: [
           Positioned(
@@ -388,6 +412,94 @@ class _ArticleScreenState extends State<ArticleScreen> {
                           ),
                           const SizedBox(height: 20),
                         ],
+
+                        // Résumé IA
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.auto_awesome_rounded,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        'Résumé IA',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (_aiSummary != null)
+                                    Text(
+                                      _aiSummary!,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
+                                        fontSize: 14,
+                                        height: 1.6,
+                                      ),
+                                    )
+                                  else if (_isSummaryLoading)
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 8,
+                                      ),
+                                      child: SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    GestureDetector(
+                                      onTap: _generateSummary,
+                                      child: Text(
+                                        _summaryError ??
+                                            'Toucher pour générer un résumé',
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                          fontSize: 13,
+                                          decoration: _summaryError == null
+                                              ? TextDecoration.underline
+                                              : null,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
                         GestureDetector(
                           onTap: _openUrl,
