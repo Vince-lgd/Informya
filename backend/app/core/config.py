@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
+    # Ajout de la clé Gemini pour le résumé IA gratuit
+    GEMINI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     NEWS_API_KEY: str = ""
     ALPHA_VANTAGE_KEY: str = ""

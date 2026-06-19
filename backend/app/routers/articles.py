@@ -21,7 +21,6 @@ async def get_article(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Récupère l'article complet par son ID
     result = await db.execute(select(Article).where(Article.id == article_id))
     article = result.scalar_one_or_none()
 
@@ -43,26 +42,26 @@ async def get_article_summary(
     if not article:
         raise HTTPException(status_code=404, detail="Article introuvable")
 
-    # Le style vient du profil utilisateur — c'est ici qu'il sert enfin !
     style = current_user.reading_style or "bullet"
     cache_key = f"ai_summary:{article_id}:{style}"
 
-    # Vérifie le cache Redis avant d'appeler Claude — économise des appels
     cached = await redis.get(cache_key)
     if cached:
         return {"summary": cached, "style": style}
 
     try:
+        # On tente l'appel avec le retry intégré dans ai_service.py
         summary = generate_summary(article.title, article.content, style)
     except Exception:
-        raise HTTPException(
-            status_code=503,
-            detail="Le résumé IA est temporairement indisponible"
-        )
+        # STRATÉGIE FALLBACK : 
+        # Si Gemini échoue après les retries, on renvoie le teaser court 
+        # qui est déjà en base (ou un message par défaut)
+        summary = article.ai_teaser or "Résumé indisponible pour le moment."
 
-    # Cache 1h — défini dans settings.AI_SUMMARY_CACHE_TTL
+    # On cache quand même le résultat (même si c'est le fallback) 
+    # pour éviter de solliciter l'API en boucle sur un échec
     await redis.set(cache_key, summary, ex=settings.AI_SUMMARY_CACHE_TTL)
-
+    
     return {"summary": summary, "style": style}
 
 

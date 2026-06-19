@@ -100,7 +100,13 @@ class ApiService {
       Uri.parse('$baseUrl/articles/$articleId/summary'),
       headers: headers,
     );
-    return jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      // Ça va forcer l'entrée dans le bloc "catch" de ton ArticleScreen
+      throw Exception('Erreur API: ${response.statusCode}');
+    }
   }
 
   // ── Bookmarks ─────────────────────────────────────────────
