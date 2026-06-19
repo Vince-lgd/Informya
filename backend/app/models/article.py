@@ -32,6 +32,12 @@ class Article(Base):
     # Teaser 2 lignes généré par Claude API — null jusqu'à génération
     ai_teaser = Column(Text, nullable=True)
 
+    # 🟢 AJOUT : Le résumé complet généré par Gemini (Bullet, Simple ou Journalistic)
+    # Null tant que l'utilisateur n'a pas cliqué sur l'article pour la première fois
+    summary_bullet = Column(Text, nullable=True)
+    summary_journalistic = Column(Text, nullable=True)
+    summary_simple = Column(Text, nullable=True)
+
     image_url = Column(String, nullable=True)
     published_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

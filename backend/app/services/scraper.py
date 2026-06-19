@@ -229,6 +229,7 @@ def generate_hash(title: str, url: str) -> str:
 async def scrape_source(source: dict, db: AsyncSession) -> int:
     # Scrape un flux RSS et insère les nouveaux articles en base
     inserted = 0
+    seen_urls = set()  # 💡 Sécurité 1 : Évite de traiter deux fois la même URL dans la même boucle RSS
 
     try:
         # feedparser parse le flux RSS de façon synchrone
@@ -239,18 +240,23 @@ async def scrape_source(source: dict, db: AsyncSession) -> int:
             title = entry.get("title", "").strip()
             url = entry.get("link", "").strip()
 
-            if not title or not url:
+            # On vérifie aussi si l'URL est déjà dans seen_urls
+            if not title or not url or url in seen_urls:
                 continue
 
-            # Génère le hash pour vérifier si l'article existe déjà
-            url_hash = generate_hash(title, url)
-
-            # Vérifie si l'article existe déjà en base
+            # 💡 Sécurité 2 : LA MODIFICATION PRINCIPALE
+            # On vérifie si l'URL existe déjà en base, peu importe si le titre a changé
             existing = await db.execute(
-                select(Article).where(Article.url_hash == url_hash)
+                select(Article).where(Article.url == url)
             )
             if existing.scalar_one_or_none():
                 continue  # Article déjà en base → on l'ignore
+
+            # On ajoute l'URL à notre set local pour ce batch
+            seen_urls.add(url)
+
+            # On génère le hash après la validation (ton modèle de données en a toujours besoin)
+            url_hash = generate_hash(title, url)
 
             # Parse la date de publication si disponible
             published_at = None

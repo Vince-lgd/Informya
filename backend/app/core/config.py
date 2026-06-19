@@ -1,6 +1,5 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
-
 
 class Settings(BaseSettings):
     # Configuration de l'application
@@ -16,23 +15,24 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
-    # Ajout de la clé Gemini pour le résumé IA gratuit
-    GEMINI_API_KEY: str = ""
-    ANTHROPIC_API_KEY: str = ""
+    # Clés API (seront chargées depuis le fichier .env)
+    GEMINI_API_KEY: str
     NEWS_API_KEY: str = ""
     ALPHA_VANTAGE_KEY: str = ""
 
+    # Cache et TTL
     FEED_CACHE_TTL: int = 900
     AI_SUMMARY_CACHE_TTL: int = 3600
 
-    # En dev → accepte tout, en prod → restreindre aux vraies URLs
+    # Origines autorisées
     ALLOWED_ORIGINS: List[str] = ["*"]
 
     # Règles mot de passe
     PASSWORD_MIN_LENGTH: int = 8
 
-    class Config:
-        env_file = ".env"
+    # Configuration pour charger le fichier .env
+    model_config = SettingsConfigDict(env_file=".env")
 
 
+# Initialisation des paramètres
 settings = Settings()
