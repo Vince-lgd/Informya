@@ -1,2 +1,6 @@
 .env
 .venvbuild/
+
+# Python compiled files
+__pycache__/
+*.pyc
