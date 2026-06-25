@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.models.article import Article
-
+from app.utils.text import calculate_reading_time, detect_content_type
 
 # Sources RSS configurées avec leur catégorie et label de biais
 RSS_SOURCES = [

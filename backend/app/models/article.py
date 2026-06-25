@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, DateTime, Text, Boolean, ForeignKey
+from sqlalchemy import Column, String, Float, DateTime, Text, Boolean, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -41,7 +41,9 @@ class Article(Base):
     image_url = Column(String, nullable=True)
     published_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
+    reading_time = Column(Integer, nullable=True)
+    content_type = Column(String, nullable=True)
+    
     # Relations
     read_by = relationship("ReadHistory", back_populates="article", lazy="select")
     bookmarks = relationship("Bookmark", back_populates="article", lazy="select")
