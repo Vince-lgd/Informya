@@ -73,10 +73,16 @@ class ApiService {
   static Future<Map<String, dynamic>> getFeed({
     int page = 1,
     String? category,
+    String? contentType,
+    int? maxReadingTime,
+    String? sourceBias,
   }) async {
     final headers = await _authHeaders();
     String url = '$baseUrl/feed?page=$page';
     if (category != null) url += '&category=$category';
+    if (contentType != null) url += '&content_type=$contentType';
+    if (maxReadingTime != null) url += '&max_reading_time=$maxReadingTime';
+    if (sourceBias != null) url += '&source_bias=$sourceBias';
 
     final response = await http.get(Uri.parse(url), headers: headers);
     return jsonDecode(response.body);
@@ -107,6 +113,34 @@ class ApiService {
       // Ça va forcer l'entrée dans le bloc "catch" de ton ArticleScreen
       throw Exception('Erreur API: ${response.statusCode}');
     }
+  }
+
+  // ── Sources favorites ──────────────────────────────────
+  static Future<List<String>> getFavoriteSources() async {
+    final headers = await _authHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/sources'),
+      headers: headers,
+    );
+    final data = jsonDecode(response.body);
+    return List<String>.from(data['sources'] ?? []);
+  }
+
+  static Future<void> addFavoriteSource(String sourceName) async {
+    final headers = await _authHeaders();
+    await http.post(
+      Uri.parse('$baseUrl/users/sources'),
+      headers: headers,
+      body: jsonEncode({'source_name': sourceName}),
+    );
+  }
+
+  static Future<void> removeFavoriteSource(String sourceName) async {
+    final headers = await _authHeaders();
+    await http.delete(
+      Uri.parse('$baseUrl/users/sources/${Uri.encodeComponent(sourceName)}'),
+      headers: headers,
+    );
   }
 
   // ── Bookmarks ─────────────────────────────────────────────

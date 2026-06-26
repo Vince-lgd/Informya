@@ -20,6 +20,8 @@ class ArticleResponse(BaseModel):
     # Teaser IA — null si pas encore généré
     ai_teaser: Optional[str] = None
 
+    reading_time: Optional[int] = None
+
     class Config:
         from_attributes = True
 

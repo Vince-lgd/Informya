@@ -1,6 +1,6 @@
 import hashlib
 import feedparser
-import httpx
+
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -11,7 +11,12 @@ from app.utils.text import calculate_reading_time, detect_content_type
 
 # Sources RSS configurées avec leur catégorie et label de biais
 RSS_SOURCES = [
-    # ── POLITIQUE / ACTUALITÉS ──────────────────────────────
+
+    # ══════════════════════════════════════════════════════
+    # POLITIQUE & ACTUALITÉS
+    # ══════════════════════════════════════════════════════
+
+    # ── France ────────────────────────────────────────────
     {
         "url": "https://feeds.lemonde.fr/rss/une",
         "source_name": "Le Monde",
@@ -34,11 +39,25 @@ RSS_SOURCES = [
         "source_bias": "left"
     },
     {
+        "url": "https://www.lepoint.fr/rss.xml",
+        "source_name": "Le Point",
+        "source_url": "lepoint.fr",
+        "category": "politique",
+        "source_bias": "center-right"
+    },
+    {
         "url": "https://www.humanite.fr/rss.xml",
         "source_name": "L'Humanité",
         "source_url": "humanite.fr",
         "category": "politique",
         "source_bias": "left"
+    },
+    {
+        "url": "https://www.sudouest.fr/rss.xml",
+        "source_name": "Sud Ouest",
+        "source_url": "sudouest.fr",
+        "category": "politique",
+        "source_bias": "center"
     },
     {
         "url": "https://www.lefigaro.fr/rss/figaro_politique.xml",
@@ -47,6 +66,8 @@ RSS_SOURCES = [
         "category": "politique",
         "source_bias": "right"
     },
+
+    # ── International ─────────────────────────────────────
     {
         "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
         "source_name": "BBC World",
@@ -69,14 +90,11 @@ RSS_SOURCES = [
         "source_bias": "center-right"
     },
 
-    # ── SPORT ───────────────────────────────────────────────
-    {
-        "url": "https://feeds.bbci.co.uk/sport/rss.xml",
-        "source_name": "BBC Sport",
-        "source_url": "bbc.co.uk",
-        "category": "sport",
-        "source_bias": "center"
-    },
+    # ══════════════════════════════════════════════════════
+    # SPORT
+    # ══════════════════════════════════════════════════════
+
+    # ── France ────────────────────────────────────────────
     {
         "url": "https://www.lequipe.fr/rss/actu_rss.xml",
         "source_name": "L'Équipe",
@@ -88,6 +106,36 @@ RSS_SOURCES = [
         "url": "https://www.footmercato.net/rss",
         "source_name": "Foot Mercato",
         "source_url": "footmercato.net",
+        "category": "sport",
+        "source_bias": "center"
+    },
+    {
+        "url": "https://www.rmcsport.fr/rss/",
+        "source_name": "RMC Sport",
+        "source_url": "rmcsport.fr",
+        "category": "sport",
+        "source_bias": "center"
+    },
+    {
+        "url": "https://www.rugbyrama.fr/rss.xml",
+        "source_name": "Rugbyrama",
+        "source_url": "rugbyrama.fr",
+        "category": "sport",
+        "source_bias": "center"
+    },
+    {
+        "url": "https://www.eurosport.fr/rss/",
+        "source_name": "Eurosport",
+        "source_url": "eurosport.fr",
+        "category": "sport",
+        "source_bias": "center"
+    },
+
+    # ── International ─────────────────────────────────────
+    {
+        "url": "https://feeds.bbci.co.uk/sport/rss.xml",
+        "source_name": "BBC Sport",
+        "source_url": "bbc.co.uk",
         "category": "sport",
         "source_bias": "center"
     },
@@ -120,14 +168,11 @@ RSS_SOURCES = [
         "source_bias": "center"
     },
 
-    # ── BOURSE / FINANCE ────────────────────────────────────
-    {
-        "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
-        "source_name": "BBC Business",
-        "source_url": "bbc.co.uk",
-        "category": "bourse",
-        "source_bias": "center"
-    },
+    # ══════════════════════════════════════════════════════
+    # BOURSE & FINANCE
+    # ══════════════════════════════════════════════════════
+
+    # ── France ────────────────────────────────────────────
     {
         "url": "https://www.lesechos.fr/rss/rss_une.xml",
         "source_name": "Les Échos",
@@ -135,10 +180,12 @@ RSS_SOURCES = [
         "category": "bourse",
         "source_bias": "center-right"
     },
+
+    # ── International ─────────────────────────────────────
     {
-        "url": "https://www.boursorama.com/rss/actualites",
-        "source_name": "Boursorama",
-        "source_url": "boursorama.com",
+        "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "source_name": "BBC Business",
+        "source_url": "bbc.co.uk",
         "category": "bourse",
         "source_bias": "center"
     },
@@ -150,21 +197,11 @@ RSS_SOURCES = [
         "source_bias": "center"
     },
 
-    # ── TECH ────────────────────────────────────────────────
-    {
-        "url": "https://www.theverge.com/rss/index.xml",
-        "source_name": "The Verge",
-        "source_url": "theverge.com",
-        "category": "tech",
-        "source_bias": "center"
-    },
-    {
-        "url": "https://feeds.wired.com/wired/index",
-        "source_name": "Wired",
-        "source_url": "wired.com",
-        "category": "tech",
-        "source_bias": "center-left"
-    },
+    # ══════════════════════════════════════════════════════
+    # TECH
+    # ══════════════════════════════════════════════════════
+
+    # ── France ────────────────────────────────────────────
     {
         "url": "https://www.01net.com/rss/",
         "source_name": "01net",
@@ -180,7 +217,27 @@ RSS_SOURCES = [
         "source_bias": "center"
     },
 
-    # ── ART / CULTURE ───────────────────────────────────────
+    # ── International ─────────────────────────────────────
+    {
+        "url": "https://www.theverge.com/rss/index.xml",
+        "source_name": "The Verge",
+        "source_url": "theverge.com",
+        "category": "tech",
+        "source_bias": "center"
+    },
+    {
+        "url": "https://feeds.wired.com/wired/index",
+        "source_name": "Wired",
+        "source_url": "wired.com",
+        "category": "tech",
+        "source_bias": "center-left"
+    },
+
+    # ══════════════════════════════════════════════════════
+    # ART & CULTURE
+    # ══════════════════════════════════════════════════════
+
+    # ── France ────────────────────────────────────────────
     {
         "url": "https://www.telerama.fr/rss",
         "source_name": "Télérama",
@@ -203,7 +260,11 @@ RSS_SOURCES = [
         "source_bias": "right"
     },
 
-    # ── SCIENCE ─────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════
+    # SCIENCE
+    # ══════════════════════════════════════════════════════
+
+    # ── France ────────────────────────────────────────────
     {
         "url": "https://www.futura-sciences.com/rss/actualites.rss",
         "source_name": "Futura Sciences",
@@ -211,6 +272,8 @@ RSS_SOURCES = [
         "category": "science",
         "source_bias": "center"
     },
+
+    # ── International ─────────────────────────────────────
     {
         "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
         "source_name": "BBC Science",
@@ -227,54 +290,54 @@ def generate_hash(title: str, url: str) -> str:
 
 
 async def scrape_source(source: dict, db: AsyncSession) -> int:
-    # Scrape un flux RSS et insère les nouveaux articles en base
     inserted = 0
-    seen_urls = set()  # 💡 Sécurité 1 : Évite de traiter deux fois la même URL dans la même boucle RSS
+    seen_urls = set()
 
     try:
-        # feedparser parse le flux RSS de façon synchrone
-        # on l'exécute directement car il est rapide
         feed = feedparser.parse(source["url"])
 
-        for entry in feed.entries[:20]:  # Max 20 articles par source
+        for entry in feed.entries[:20]:
             title = entry.get("title", "").strip()
             url = entry.get("link", "").strip()
 
-            # On vérifie aussi si l'URL est déjà dans seen_urls
             if not title or not url or url in seen_urls:
                 continue
 
-            # 💡 Sécurité 2 : LA MODIFICATION PRINCIPALE
-            # On vérifie si l'URL existe déjà en base, peu importe si le titre a changé
             existing = await db.execute(
                 select(Article).where(Article.url == url)
             )
             if existing.scalar_one_or_none():
-                continue  # Article déjà en base → on l'ignore
+                continue
 
-            # On ajoute l'URL à notre set local pour ce batch
             seen_urls.add(url)
-
-            # On génère le hash après la validation (ton modèle de données en a toujours besoin)
             url_hash = generate_hash(title, url)
 
-            # Parse la date de publication si disponible
             published_at = None
             if hasattr(entry, "published_parsed") and entry.published_parsed:
                 published_at = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
 
-            # Crée l'article
+            # Contenu RSS uniquement — trafilatura est utilisé à la demande dans ai_service.py
+            final_content = entry.get("summary", "")
+
+            # Calcul temps de lecture et type de contenu
+            text_for_calc = f"{title} {final_content}".strip()
+            word_count = len(text_for_calc.split())
+            reading_time = calculate_reading_time(text_for_calc)
+            content_type = detect_content_type(word_count)
+
             article = Article(
                 title=title,
                 url=url,
                 url_hash=url_hash,
-                content=entry.get("summary", None),
+                content=final_content,
                 image_url=None,
                 source_name=source["source_name"],
                 source_url=source["source_url"],
                 category=source["category"],
                 source_bias=source["source_bias"],
                 published_at=published_at,
+                reading_time=reading_time,
+                content_type=content_type,
             )
             db.add(article)
             inserted += 1

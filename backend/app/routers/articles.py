@@ -48,11 +48,22 @@ async def get_article_summary(
     if cached:
         return {"summary": cached, "style": style}
 
-    # Génération Gemini
+   # Génération Gemini
     try:
+        # TODO: retirer ces print avant le déploiement Railway
+        # 🔍 ON AJOUTE CES LIGNES POUR ESPIONNER LE TEXTE AVANT L'IA :
+        texte_content = str(article.content) if article.content else ""
+        print(f"\n--- 🕵️‍♂️ TEXTE ENVOYÉ À GEMINI (Longueur: {len(texte_content)}) ---")
+        print(texte_content[:500] + "...\n") 
+        
         summary = await run_in_threadpool(
             generate_summary, article.title, article.content, article.url, style
         )
+        
+        # 🔍 ON AJOUTE CES LIGNES POUR ESPIONNER LE RÉSULTAT DE L'IA :
+        print(f"--- 🤖 RÉPONSE DE GEMINI (Style attendu: {style}) ---")
+        print(summary + "\n")
+        
         await store_summary(redis, db, article, style, summary)
         return {"summary": summary, "style": style, "source": "gemini"}
 

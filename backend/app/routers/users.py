@@ -5,7 +5,7 @@ from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.models.user import User
+from app.models.user import User, UserSource
 from app.models.article import Bookmark, Article
 from app.schemas.article import BookmarkCreate, ArticleResponse
 from app.schemas.user import UserUpdateStyle, UserResponse
@@ -94,4 +94,63 @@ async def remove_bookmark(
         raise HTTPException(status_code=404, detail="Favori introuvable")
     
     await db.delete(bookmark)
+    await db.commit()
+
+
+@router.get("/sources")
+async def get_favorite_sources(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(
+        select(UserSource.source_name)
+        .where(UserSource.user_id == current_user.id)
+        .order_by(UserSource.created_at.desc())
+    )
+    return {"sources": result.scalars().all()}
+
+
+@router.post("/sources", status_code=201)
+async def add_favorite_source(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    source_name = data.get("source_name", "").strip()
+    if not source_name:
+        raise HTTPException(status_code=400, detail="Nom de source invalide")
+
+    # Vérifie si déjà en favori
+    existing = await db.execute(
+        select(UserSource).where(
+            UserSource.user_id == current_user.id,
+            UserSource.source_name == source_name
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Source déjà en favori")
+
+    source = UserSource(user_id=current_user.id, source_name=source_name)
+    db.add(source)
+    await db.commit()
+    return {"message": f"{source_name} ajouté aux favoris"}
+
+
+@router.delete("/sources/{source_name}", status_code=204)
+async def remove_favorite_source(
+    source_name: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(
+        select(UserSource).where(
+            UserSource.user_id == current_user.id,
+            UserSource.source_name == source_name
+        )
+    )
+    source = result.scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="Source non trouvée")
+
+    await db.delete(source)
     await db.commit()

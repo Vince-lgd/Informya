@@ -342,12 +342,36 @@ class _ArticleScreenState extends State<ArticleScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              _formatDate(article['published_at']),
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 14,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  _formatDate(article['published_at']),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                if (article['reading_time'] != null) ...[
+                                  Text(
+                                    '  ·  ',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${article['reading_time']} min de lecture',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                             if (article['source_bias'] != null)
                               Container(
@@ -363,7 +387,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                   _biasLabel(article['source_bias']),
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.8),
-                                    fontSize: 14,
+                                    fontSize: 13,
                                   ),
                                 ),
                               ),

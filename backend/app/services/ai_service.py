@@ -102,7 +102,7 @@ Important:
         raw_summary = _call_gemini(prompt)
     except Exception:
         # En cas de crash persistant (comme un 429 immédiat), on renvoie un fallback propre
-        return "Résumé indisponible actuellement (quota de l'API atteint)."
+        return "Résumé indisponible pour le moment."
 
     # Filet de sécurité : Gemini ignore parfois l'instruction "pas d'intro"
     lines_to_strip = ["voici", "bien sûr", "voilà"]

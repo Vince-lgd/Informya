@@ -1,4 +1,6 @@
 import 'dart:ui';
+import 'package:flutter/services.dart';
+
 import '../services/api_service.dart';
 import 'article_screen.dart';
 import '../theme/app_theme.dart';
@@ -18,6 +20,11 @@ class _FeedScreenState extends State<FeedScreen> {
   int _currentPage = 1;
   bool _hasMore = true;
   String? _selectedCategory;
+  String? _selectedContentType;
+  int? _selectedMaxReadingTime;
+  String? _selectedSourceBias;
+
+  List<String> _favoriteSources = [];
 
   @override
   void initState() {
@@ -25,6 +32,16 @@ class _FeedScreenState extends State<FeedScreen> {
 
     _isLoading = false;
     _loadFeed(refresh: true);
+    _loadFavoriteSources();
+  }
+
+  Future<void> _loadFavoriteSources() async {
+    try {
+      final sources = await ApiService.getFavoriteSources();
+      if (mounted) setState(() => _favoriteSources = sources);
+    } catch (e) {
+      // Silencieux
+    }
   }
 
   final List<String> _categories = [
@@ -56,6 +73,9 @@ class _FeedScreenState extends State<FeedScreen> {
         category: _selectedCategory == 'Tout'
             ? null
             : _selectedCategory?.toLowerCase(),
+        contentType: _selectedContentType,
+        maxReadingTime: _selectedMaxReadingTime,
+        sourceBias: _selectedSourceBias,
       );
 
       final List<dynamic> newArticles = result['articles'] ?? [];
@@ -75,6 +95,327 @@ class _FeedScreenState extends State<FeedScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  void _showFilters() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF99B4A0).withValues(alpha: 0.95),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Filtres',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedContentType = null;
+                                _selectedMaxReadingTime = null;
+                                _selectedSourceBias = null;
+                              });
+                              _loadFeed(refresh: true);
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              'Réinitialiser',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      Text(
+                        'Type d\'article',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _filterChip(
+                            'Tout',
+                            null,
+                            _selectedContentType,
+                            (v) =>
+                                setModalState(() => _selectedContentType = v),
+                          ),
+                          _filterChip(
+                            'Brève',
+                            'brève',
+                            _selectedContentType,
+                            (v) =>
+                                setModalState(() => _selectedContentType = v),
+                          ),
+                          _filterChip(
+                            'Article',
+                            'article',
+                            _selectedContentType,
+                            (v) =>
+                                setModalState(() => _selectedContentType = v),
+                          ),
+                          _filterChip(
+                            'Analyse',
+                            'analyse',
+                            _selectedContentType,
+                            (v) =>
+                                setModalState(() => _selectedContentType = v),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      Text(
+                        'Temps de lecture',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _filterChipInt(
+                            'Tout',
+                            null,
+                            _selectedMaxReadingTime,
+                            (v) => setModalState(
+                              () => _selectedMaxReadingTime = v,
+                            ),
+                          ),
+                          _filterChipInt(
+                            '< 1 min',
+                            1,
+                            _selectedMaxReadingTime,
+                            (v) => setModalState(
+                              () => _selectedMaxReadingTime = v,
+                            ),
+                          ),
+                          _filterChipInt(
+                            '< 3 min',
+                            3,
+                            _selectedMaxReadingTime,
+                            (v) => setModalState(
+                              () => _selectedMaxReadingTime = v,
+                            ),
+                          ),
+                          _filterChipInt(
+                            '< 5 min',
+                            5,
+                            _selectedMaxReadingTime,
+                            (v) => setModalState(
+                              () => _selectedMaxReadingTime = v,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      Text(
+                        'Biais de la source',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _filterChip(
+                            'Tout',
+                            null,
+                            _selectedSourceBias,
+                            (v) => setModalState(() => _selectedSourceBias = v),
+                          ),
+                          _filterChip(
+                            'Gauche',
+                            'left',
+                            _selectedSourceBias,
+                            (v) => setModalState(() => _selectedSourceBias = v),
+                          ),
+                          _filterChip(
+                            'Centre-G',
+                            'center-left',
+                            _selectedSourceBias,
+                            (v) => setModalState(() => _selectedSourceBias = v),
+                          ),
+                          _filterChip(
+                            'Centre',
+                            'center',
+                            _selectedSourceBias,
+                            (v) => setModalState(() => _selectedSourceBias = v),
+                          ),
+                          _filterChip(
+                            'Centre-D',
+                            'center-right',
+                            _selectedSourceBias,
+                            (v) => setModalState(() => _selectedSourceBias = v),
+                          ),
+                          _filterChip(
+                            'Droite',
+                            'right',
+                            _selectedSourceBias,
+                            (v) => setModalState(() => _selectedSourceBias = v),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {});
+                          _loadFeed(refresh: true);
+                          Navigator.pop(context);
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Appliquer les filtres',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _filterChip(
+    String label,
+    String? value,
+    String? selected,
+    Function(String?) onTap,
+  ) {
+    final isSelected = selected == value;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.white.withValues(alpha: 0.35)
+              : Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: isSelected ? 0.6 : 0.2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: isSelected ? 1 : 0.7),
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChipInt(
+    String label,
+    int? value,
+    int? selected,
+    Function(int?) onTap,
+  ) {
+    final isSelected = selected == value;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.white.withValues(alpha: 0.35)
+              : Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: isSelected ? 0.6 : 0.2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: isSelected ? 1 : 0.7),
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -100,14 +441,48 @@ class _FeedScreenState extends State<FeedScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
-                  child: const Text(
-                    'Informya',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Informya',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _showFilters,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color:
+                                    (_selectedContentType != null ||
+                                        _selectedMaxReadingTime != null ||
+                                        _selectedSourceBias != null)
+                                    ? Colors.white.withValues(alpha: 0.4)
+                                    : Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.tune_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -209,7 +584,13 @@ class _FeedScreenState extends State<FeedScreen> {
                                     ),
                                   );
                                 },
-                                child: _ArticleCard(article: _articles[index]),
+                                child: _ArticleCard(
+                                  article: _articles[index],
+                                  isFavoriteSource: _favoriteSources.contains(
+                                    _articles[index]['source_name'],
+                                  ),
+                                  onFavoriteToggled: _loadFavoriteSources,
+                                ),
                               );
                             },
                           ),
@@ -240,8 +621,14 @@ class _FeedScreenState extends State<FeedScreen> {
 
 class _ArticleCard extends StatelessWidget {
   final Map<String, dynamic> article;
+  final bool isFavoriteSource;
+  final VoidCallback? onFavoriteToggled;
 
-  const _ArticleCard({required this.article});
+  const _ArticleCard({
+    required this.article,
+    this.isFavoriteSource = false,
+    this.onFavoriteToggled,
+  });
 
   Color _categoryColor(String? category) {
     switch (category) {
@@ -355,6 +742,7 @@ class _ArticleCard extends StatelessWidget {
                           // Source + catégorie
                           Row(
                             children: [
+                              // Badge source
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -367,13 +755,48 @@ class _ArticleCard extends StatelessWidget {
                                     color: color.withValues(alpha: 0.5),
                                   ),
                                 ),
-                                child: Text(
-                                  article['source_name'] ?? '',
-                                  style: TextStyle(
-                                    color: color,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () async {
+                                        final sourceName =
+                                            article['source_name'];
+                                        if (sourceName == null) return;
+                                        if (isFavoriteSource) {
+                                          await ApiService.removeFavoriteSource(
+                                            sourceName,
+                                          );
+                                        } else {
+                                          await ApiService.addFavoriteSource(
+                                            sourceName,
+                                          );
+                                        }
+                                        await HapticFeedback.lightImpact();
+                                        // Recharge les favoris dans le feed
+                                        onFavoriteToggled?.call();
+                                      },
+                                      child: Icon(
+                                        isFavoriteSource
+                                            ? Icons.star_rounded
+                                            : Icons.star_outline_rounded,
+                                        color: isFavoriteSource
+                                            ? Colors.amber
+                                            : Colors.white.withValues(
+                                                alpha: 0.4,
+                                              ),
+                                        size: 18,
+                                      ),
+                                    ),
+                                    Text(
+                                      article['source_name'] ?? '',
+                                      style: TextStyle(
+                                        color: color,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 8),

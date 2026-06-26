@@ -1,11 +1,11 @@
-from sqlalchemy import Column, String, Boolean, DateTime
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 import uuid
-
 from app.core.database import Base
 
+from sqlalchemy import Column, ForeignKey, String, Boolean, DateTime, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime, timezone
+from sqlalchemy import UniqueConstraint
+from sqlalchemy.orm import relationship
 
 class User(Base):
     __tablename__ = "users"
@@ -41,3 +41,16 @@ class User(Base):
                                back_populates="sender", lazy="select")
     received_shares = relationship("SharedArticle", foreign_keys="SharedArticle.recipient_id",
                                    back_populates="recipient", lazy="select")
+    
+class UserSource(Base):
+    __tablename__ = "user_sources"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    source_name = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # Un utilisateur ne peut pas ajouter deux fois la même source
+    __table_args__ = (
+        UniqueConstraint("user_id", "source_name", name="uq_user_source"),
+    )      

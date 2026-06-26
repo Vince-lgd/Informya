@@ -22,17 +22,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
+  List<String> _favoriteSources = [];
+
   Future<void> _loadProfile() async {
     try {
-      final result = await ApiService.getMe();
+      // 1. On récupère les deux informations séquentiellement
+      final userResult = await ApiService.getMe();
+      final sourcesResult = await ApiService.getFavoriteSources();
+
+      // 2. Si tout s'est bien passé, on met à jour l'état en une seule fois
       if (mounted) {
         setState(() {
-          _user = result;
+          _user = userResult;
+          _favoriteSources = sourcesResult;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      // 3. S'il y a la moindre erreur (sur getMe ou getFavoriteSources)
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -465,6 +475,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             );
                           },
+                        ),
+                        const SizedBox(height: 16),
+
+                        _sectionLabel('Mes sources favorites'),
+                        const SizedBox(height: 8),
+                        _glassCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_favoriteSources.isEmpty)
+                                Text(
+                                  'Aucune source favorite — appuie sur ⭐ dans le feed',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    fontSize: 13,
+                                  ),
+                                )
+                              else
+                                ..._favoriteSources.map(
+                                  (source) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.star_rounded,
+                                          color: Colors.amber,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            source,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () async {
+                                            await ApiService.removeFavoriteSource(
+                                              source,
+                                            );
+                                            await HapticFeedback.lightImpact();
+                                            _loadProfile();
+                                          },
+                                          child: Icon(
+                                            Icons.close_rounded,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.4,
+                                            ),
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
 

@@ -15,27 +15,19 @@ def get_cache_key(article_id: str, style: str) -> str:
     return f"ai_summary:{article_id}:{style}"
 
 
-async def get_cached_summary(
-    redis,
-    article: Article,
-    style: str,
-) -> str | None:
-    """
-    Vérifie L1 (Redis) puis L2 (PostgreSQL).
-    Retourne le résumé si trouvé en cache, None sinon.
-    Remonte automatiquement le résumé PostgreSQL dans Redis si trouvé.
-    """
+# Dans cache_service.py -> get_cached_summary()
+async def get_cached_summary(redis, article: Article, style: str) -> str | None:
     cache_key = get_cache_key(str(article.id), style)
 
-    # L1 — Redis (ultra-rapide, en RAM)
+    # L1 — Redis
     cached = await redis.get(cache_key)
     if cached:
-        return cached
+        # 🟢 AJOUT : On force le décodage en string si Redis renvoie des bytes
+        return cached.decode('utf-8') if isinstance(cached, bytes) else cached
 
-    # L2 — PostgreSQL (persistant)
+    # L2 — PostgreSQL
     db_summary = getattr(article, f"summary_{style}", None)
     if db_summary:
-        # On remonte dans Redis pour les prochains appels
         await redis.set(cache_key, db_summary, ex=settings.AI_SUMMARY_CACHE_TTL)
         return db_summary
 
