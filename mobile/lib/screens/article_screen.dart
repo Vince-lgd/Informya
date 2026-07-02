@@ -21,11 +21,43 @@ class _ArticleScreenState extends State<ArticleScreen> {
   bool _isSummaryLoading = false;
   String? _summaryError;
   bool _isLoading = false;
+  bool _isFavoriteSource = false;
 
   @override
   void initState() {
     super.initState();
     _checkIfBookmarked();
+    _checkIfFavoriteSource();
+  }
+
+  Future<void> _checkIfFavoriteSource() async {
+    try {
+      final sources = await ApiService.getFavoriteSources();
+      final sourceName = widget.article['source_name'];
+      if (mounted) {
+        setState(() {
+          _isFavoriteSource = sources.contains(sourceName);
+        });
+      }
+    } catch (e) {
+      // Silencieux
+    }
+  }
+
+  Future<void> _toggleFavoriteSource() async {
+    final sourceName = widget.article['source_name'];
+    if (sourceName == null) return;
+    try {
+      if (_isFavoriteSource) {
+        await ApiService.removeFavoriteSource(sourceName);
+      } else {
+        await ApiService.addFavoriteSource(sourceName);
+      }
+      await HapticFeedback.lightImpact();
+      if (mounted) setState(() => _isFavoriteSource = !_isFavoriteSource);
+    } catch (e) {
+      // Silencieux
+    }
   }
 
   // Vérifie si l'article est déjà en favori au chargement
@@ -46,26 +78,40 @@ class _ArticleScreenState extends State<ArticleScreen> {
   Future<void> _toggleBookmark() async {
     setState(() => _isLoading = true);
     try {
+      // 🟢 1. Détecter le mode actuel
+      final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+      // 🟢 2. Calculer les couleurs dynamiques
+      final snackBgColor = isDarkMode
+          ? Colors.white.withValues(alpha: 0.95)
+          : Colors.black.withValues(alpha: 0.85);
+
+      final snackContentColor = isDarkMode ? Colors.black87 : Colors.white;
+
       if (_isBookmarked) {
         await ApiService.removeBookmark(widget.article['id']);
 
-        // Vibration courte + notification retrait
         await HapticFeedback.lightImpact();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
                   Icon(
                     Icons.bookmark_remove_rounded,
-                    color: Colors.white,
+                    color: snackContentColor, // 🟢 Couleur dynamique
                     size: 18,
                   ),
-                  SizedBox(width: 8),
-                  Text('Retiré des favoris'),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Retiré des favoris',
+                    style: TextStyle(
+                      color: snackContentColor,
+                    ), // 🟢 Couleur dynamique
+                  ),
                 ],
               ),
-              backgroundColor: Colors.black.withValues(alpha: 0.8),
+              backgroundColor: snackBgColor, // 🟢 Couleur dynamique
               duration: const Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -77,19 +123,27 @@ class _ArticleScreenState extends State<ArticleScreen> {
       } else {
         await ApiService.addBookmark(widget.article['id']);
 
-        // Vibration forte + notification ajout
         await HapticFeedback.mediumImpact();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
-                  Icon(Icons.bookmark_rounded, color: Colors.white, size: 18),
-                  SizedBox(width: 8),
-                  Text('Ajouté aux favoris !'),
+                  Icon(
+                    Icons.bookmark_rounded,
+                    color: snackContentColor, // 🟢 Couleur dynamique
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Ajouté aux favoris !',
+                    style: TextStyle(
+                      color: snackContentColor,
+                    ), // 🟢 Couleur dynamique
+                  ),
                 ],
               ),
-              backgroundColor: Colors.black.withValues(alpha: 0.8),
+              backgroundColor: snackBgColor, // 🟢 Couleur dynamique
               duration: const Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -303,26 +357,45 @@ class _ArticleScreenState extends State<ArticleScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Badge source + catégorie
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: color.withValues(alpha: 0.4),
+                            GestureDetector(
+                              onTap: _toggleFavoriteSource,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 5,
                                 ),
-                              ),
-                              child: Text(
-                                article['source_name'] ?? '',
-                                style: TextStyle(
-                                  color: color,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: color.withValues(alpha: 0.4),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _isFavoriteSource
+                                          ? Icons.star_rounded
+                                          : Icons.star_outline_rounded,
+                                      color: _isFavoriteSource
+                                          ? Colors.amber
+                                          : Colors.white.withValues(alpha: 0.4),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      article['source_name'] ?? '',
+                                      style: TextStyle(
+                                        color: color,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),

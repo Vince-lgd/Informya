@@ -19,20 +19,28 @@ async def get_feed(
     content_type: str = Query(None),
     max_reading_time: int = Query(None),
     source_bias: str = Query(None),
+    favorites_only: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Articles déjà lus
     read_result = await db.execute(
         select(ReadHistory.article_id).where(ReadHistory.user_id == current_user.id)
     )
     read_ids = list(read_result.scalars().all())
 
-    # Sources favorites
     fav_result = await db.execute(
         select(UserSource.source_name).where(UserSource.user_id == current_user.id)
     )
     fav_sources = list(fav_result.scalars().all())
+
+    # Si l'utilisateur veut ses favoris mais n'en a aucun → retourne liste vide
+    if favorites_only and not fav_sources:
+        return FeedResponse(
+            articles=[],
+            total=0,
+            page=page,
+            has_more=False
+        )
 
     def apply_filters(q):
         if read_ids:
@@ -47,39 +55,19 @@ async def get_feed(
             )
         if source_bias:
             q = q.where(Article.source_bias == source_bias)
+        if favorites_only and fav_sources:
+            q = q.where(Article.source_name.in_(fav_sources))
         return q
 
+    query = apply_filters(select(Article)).order_by(Article.published_at.desc())
     offset = (page - 1) * limit
+    query = query.offset(offset).limit(limit)
 
-    if fav_sources:
-        # Sources favorites en premier, puis le reste
-        fav_query = apply_filters(
-            select(Article).where(Article.source_name.in_(fav_sources))
-        ).order_by(Article.published_at.desc())
+    result = await db.execute(query)
+    articles = list(result.scalars().all())
 
-        other_query = apply_filters(
-            select(Article).where(not_(Article.source_name.in_(fav_sources)))
-        ).order_by(Article.published_at.desc())
-
-        fav_result = await db.execute(fav_query)
-        fav_articles = list(fav_result.scalars().all())
-
-        other_result = await db.execute(other_query)
-        other_articles = list(other_result.scalars().all())
-
-        # Combine : favoris en tête
-        all_articles = fav_articles + other_articles
-        total = len(all_articles)
-        articles = all_articles[offset:offset + limit]
-    else:
-        # Pas de favoris — comportement normal
-        query = apply_filters(select(Article)).order_by(Article.published_at.desc())
-        query = query.offset(offset).limit(limit)
-        result = await db.execute(query)
-        articles = list(result.scalars().all())
-
-        count_query = apply_filters(select(func.count()).select_from(Article))
-        total = await db.scalar(count_query)
+    count_query = apply_filters(select(func.count()).select_from(Article))
+    total = await db.scalar(count_query)
 
     return FeedResponse(
         articles=[ArticleResponse.model_validate(a) for a in articles],

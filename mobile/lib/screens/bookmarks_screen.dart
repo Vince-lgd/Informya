@@ -15,12 +15,14 @@ class BookmarksScreen extends StatefulWidget {
 
 class _BookmarksScreenState extends State<BookmarksScreen> {
   List<dynamic> _bookmarks = [];
+  List<String> _favoriteSources = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadBookmarks();
+    _loadFavoriteSources();
   }
 
   Future<void> _loadBookmarks() async {
@@ -33,6 +35,15 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadFavoriteSources() async {
+    try {
+      final sources = await ApiService.getFavoriteSources();
+      if (mounted) setState(() => _favoriteSources = sources);
+    } catch (e) {
+      // Silencieux
     }
   }
 
@@ -165,7 +176,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                       : RefreshIndicator(
                           onRefresh: _loadBookmarks,
                           color: Colors.white,
-                          backgroundColor: const Color(0xFF99B4A0),
+                          backgroundColor: AppColors.background(context),
                           child: ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             itemCount: _bookmarks.length,
@@ -234,148 +245,107 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                                                     children: [
                                                       Row(
                                                         children: [
-                                                          Container(
-                                                            padding:
-                                                                const EdgeInsets.symmetric(
-                                                                  horizontal:
-                                                                      10,
-                                                                  vertical: 4,
-                                                                ),
-                                                            decoration: BoxDecoration(
-                                                              color: color
-                                                                  .withValues(
-                                                                    alpha: 0.15,
+                                                          GestureDetector(
+                                                            onTap: () async {
+                                                              final sourceName =
+                                                                  article['source_name'];
+                                                              if (sourceName ==
+                                                                  null)
+                                                                return;
+                                                              final isFav =
+                                                                  _favoriteSources
+                                                                      .contains(
+                                                                        sourceName,
+                                                                      );
+                                                              if (isFav) {
+                                                                await ApiService.removeFavoriteSource(
+                                                                  sourceName,
+                                                                );
+                                                              } else {
+                                                                await ApiService.addFavoriteSource(
+                                                                  sourceName,
+                                                                );
+                                                              }
+                                                              await HapticFeedback.lightImpact();
+                                                              _loadFavoriteSources();
+                                                            },
+                                                            child: Container(
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        10,
+                                                                    vertical: 4,
                                                                   ),
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    20,
-                                                                  ),
-                                                              border: Border.all(
+                                                              decoration: BoxDecoration(
                                                                 color: color
                                                                     .withValues(
                                                                       alpha:
-                                                                          0.4,
+                                                                          0.15,
                                                                     ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      20,
+                                                                    ),
+                                                                border: Border.all(
+                                                                  color: color
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.4,
+                                                                      ),
+                                                                ),
                                                               ),
-                                                            ),
-                                                            child: Text(
-                                                              article['source_name'] ??
-                                                                  '',
-                                                              style: TextStyle(
-                                                                color: color,
-                                                                fontSize: 14,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          const SizedBox(
-                                                            width: 8,
-                                                          ),
-                                                          Text(
-                                                            '${_categoryEmoji(category)} $category',
-                                                            style: TextStyle(
-                                                              color: Colors
-                                                                  .white
-                                                                  .withValues(
-                                                                    alpha: 0.8,
+                                                              child: Row(
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
+                                                                children: [
+                                                                  Icon(
+                                                                    _favoriteSources.contains(
+                                                                          article['source_name'],
+                                                                        )
+                                                                        ? Icons
+                                                                              .star_rounded
+                                                                        : Icons
+                                                                              .star_outline_rounded,
+                                                                    color:
+                                                                        _favoriteSources.contains(
+                                                                          article['source_name'],
+                                                                        )
+                                                                        ? Colors
+                                                                              .amber
+                                                                        : Colors.white.withValues(
+                                                                            alpha:
+                                                                                0.4,
+                                                                          ),
+                                                                    size: 14,
                                                                   ),
-                                                              fontSize: 14,
+                                                                  const SizedBox(
+                                                                    width: 4,
+                                                                  ),
+                                                                  Text(
+                                                                    article['source_name'] ??
+                                                                        '',
+                                                                    style: TextStyle(
+                                                                      color:
+                                                                          color,
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
                                                             ),
                                                           ),
                                                           const Spacer(),
-                                                          // Bouton supprimer
+                                                          // Bouton supprimer bookmark
                                                           GestureDetector(
-                                                            onTap: () async {
-                                                              final articleId =
-                                                                  article['id'];
-
-                                                              HapticFeedback.selectionClick();
-
-                                                              try {
-                                                                await _removeBookmark(
-                                                                  articleId,
-                                                                );
-
-                                                                if (!mounted)
-                                                                  return;
-
-                                                                ScaffoldMessenger.of(
-                                                                  context,
-                                                                ).showSnackBar(
-                                                                  SnackBar(
-                                                                    content: const Row(
-                                                                      children: [
-                                                                        Icon(
-                                                                          Icons
-                                                                              .bookmark_remove_rounded,
-                                                                          color:
-                                                                              Colors.white,
-                                                                          size:
-                                                                              18,
-                                                                        ),
-                                                                        SizedBox(
-                                                                          width:
-                                                                              8,
-                                                                        ),
-                                                                        Text(
-                                                                          'Retiré des favoris',
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                    backgroundColor: Colors
-                                                                        .black
-                                                                        .withValues(
-                                                                          alpha:
-                                                                              0.8,
-                                                                        ),
-                                                                    duration:
-                                                                        const Duration(
-                                                                          seconds:
-                                                                              2,
-                                                                        ),
-                                                                    behavior:
-                                                                        SnackBarBehavior
-                                                                            .floating,
-                                                                    shape: RoundedRectangleBorder(
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                            12,
-                                                                          ),
-                                                                    ),
-                                                                  ),
-                                                                );
-                                                              } catch (e) {
-                                                                ScaffoldMessenger.of(
-                                                                  context,
-                                                                ).showSnackBar(
-                                                                  SnackBar(
-                                                                    behavior:
-                                                                        SnackBarBehavior
-                                                                            .floating,
-                                                                    duration:
-                                                                        const Duration(
-                                                                          seconds:
-                                                                              1,
-                                                                        ),
-                                                                    backgroundColor: Colors
-                                                                        .red
-                                                                        .withValues(
-                                                                          alpha:
-                                                                              0.8,
-                                                                        ),
-                                                                    content: const Text(
-                                                                      "Erreur lors de la suppression",
-                                                                      style: TextStyle(
-                                                                        fontSize:
-                                                                            13,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                );
-                                                              }
-                                                            },
+                                                            onTap: () =>
+                                                                _removeBookmark(
+                                                                  article['id'],
+                                                                ),
                                                             child: Icon(
                                                               Icons
                                                                   .bookmark_remove_rounded,
@@ -384,7 +354,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                                                                   .withValues(
                                                                     alpha: 0.5,
                                                                   ),
-                                                              size: 25,
+                                                              size: 20,
                                                             ),
                                                           ),
                                                         ],

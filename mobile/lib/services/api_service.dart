@@ -76,6 +76,7 @@ class ApiService {
     String? contentType,
     int? maxReadingTime,
     String? sourceBias,
+    bool favoritesOnly = false,
   }) async {
     final headers = await _authHeaders();
     String url = '$baseUrl/feed?page=$page';
@@ -83,6 +84,7 @@ class ApiService {
     if (contentType != null) url += '&content_type=$contentType';
     if (maxReadingTime != null) url += '&max_reading_time=$maxReadingTime';
     if (sourceBias != null) url += '&source_bias=$sourceBias';
+    if (favoritesOnly) url += '&favorites_only=true';
 
     final response = await http.get(Uri.parse(url), headers: headers);
     return jsonDecode(response.body);

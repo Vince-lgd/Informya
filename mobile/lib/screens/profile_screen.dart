@@ -51,16 +51,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (code == null) return;
     Clipboard.setData(ClipboardData(text: code));
     HapticFeedback.lightImpact();
+
+    // 1. Détecter le mode actuel (Sombre ou Clair)
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // 2. Définir les couleurs inversées
+    final snackBgColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.95)
+        : Colors.black.withValues(alpha: 0.85);
+
+    final snackContentColor = isDarkMode ? Colors.black87 : Colors.white;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
+        // ❌ Le "const" a été retiré ici pour accepter les variables dynamiques
+        content: Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text('Code copié !'),
+            Icon(
+              Icons.check_circle_rounded,
+              color: snackContentColor, // 🟢 Couleur dynamique
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Code copié !',
+              style: TextStyle(
+                color: snackContentColor,
+              ), // 🟢 Couleur dynamique
+            ),
           ],
         ),
-        backgroundColor: Colors.black.withValues(alpha: 0.8),
+        backgroundColor: snackBgColor, // 🟢 Couleur dynamique
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -100,7 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Comment Claude doit résumer tes articles',
+                    'Choisissez le style de lecture pour vos résumés d\'articles',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 13,
@@ -110,7 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _styleOption(
                     'bullet',
                     'Points clés',
-                    'Résumé en bullet points',
+                    'Résumé par listes à puces',
                   ),
                   const SizedBox(height: 10),
                   _styleOption(
@@ -143,20 +164,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
           await HapticFeedback.lightImpact();
           if (mounted) {
             setState(() => _user = result);
+
+            // 🟢 1. Détecter si le système affiche du mode sombre
+            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+            // 🟢 2. Définir les couleurs inversées (clair si sombre, sombre si clair)
+            final snackBgColor = isDarkMode
+                ? Colors.white.withValues(
+                    alpha: 0.95,
+                  ) // Notification claire sur fond sombre
+                : Colors.black.withValues(
+                    alpha: 0.85,
+                  ); // Notification sombre sur fond clair
+
+            final snackContentColor = isDarkMode
+                ? Colors
+                      .black87 // Texte/Icône sombre si notification claire
+                : Colors.white; // Texte/Icône clair si notification sombre
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Row(
+                content: Row(
                   children: [
                     Icon(
                       Icons.check_circle_rounded,
-                      color: Colors.white,
+                      color: snackContentColor, // 🟢 Couleur dynamique
                       size: 18,
                     ),
-                    SizedBox(width: 8),
-                    Text('Style de lecture mis à jour'),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Style de lecture mis à jour',
+                      style: TextStyle(
+                        color: snackContentColor, // 🟢 Couleur dynamique
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
-                backgroundColor: Colors.black.withValues(alpha: 0.8),
+                backgroundColor: snackBgColor, // 🟢 Couleur dynamique
                 duration: const Duration(seconds: 2),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
@@ -392,7 +437,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       _formatJoinDate(_user?['created_at']),
                                       style: TextStyle(
                                         color: Colors.white.withValues(
-                                          alpha: 0.5,
+                                          alpha: 0.6,
                                         ),
                                         fontSize: 12,
                                       ),
@@ -406,7 +451,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         const SizedBox(height: 16),
 
-                        _sectionLabel('Style de lecture des articles'),
+                        _sectionLabel(
+                          'Style de lecture des résumés d\'articles',
+                        ),
                         const SizedBox(height: 8),
                         GestureDetector(
                           onTap: _showReadingStylePicker,

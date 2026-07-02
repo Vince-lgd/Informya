@@ -46,6 +46,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   final List<String> _categories = [
     'Tout',
+    '⭐ Mes sources',
     'Politique',
     'Sport',
     'Bourse',
@@ -70,9 +71,13 @@ class _FeedScreenState extends State<FeedScreen> {
     try {
       final result = await ApiService.getFeed(
         page: _currentPage,
-        category: _selectedCategory == 'Tout'
+        category:
+            (_selectedCategory == 'Tout' ||
+                _selectedCategory == '⭐ Mes sources' ||
+                _selectedCategory == null)
             ? null
             : _selectedCategory?.toLowerCase(),
+        favoritesOnly: _selectedCategory == '⭐ Mes sources',
         contentType: _selectedContentType,
         maxReadingTime: _selectedMaxReadingTime,
         sourceBias: _selectedSourceBias,
@@ -114,7 +119,9 @@ class _FeedScreenState extends State<FeedScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF99B4A0).withValues(alpha: 0.95),
+                    color: AppColors.background(
+                      context,
+                    ).withValues(alpha: 0.95),
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(24),
                     ),
@@ -545,10 +552,46 @@ class _FeedScreenState extends State<FeedScreen> {
                       ? const Center(
                           child: CircularProgressIndicator(color: Colors.white),
                         )
+                      : !_isLoading && _articles.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _selectedCategory == '⭐ Mes sources'
+                                    ? Icons.star_outline_rounded
+                                    : Icons.newspaper_outlined,
+                                color: Colors.white.withValues(alpha: 0.4),
+                                size: 64,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _selectedCategory == '⭐ Mes sources'
+                                    ? 'Aucune source favorite'
+                                    : 'Aucun article disponible',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              if (_selectedCategory == '⭐ Mes sources')
+                                Text(
+                                  'Ajoute des sources via l\'étoile ⭐ sur les cartes',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                            ],
+                          ),
+                        )
                       : RefreshIndicator(
                           onRefresh: () => _loadFeed(refresh: true),
                           color: Colors.white,
-                          backgroundColor: const Color(0xFF99B4A0),
+                          backgroundColor: AppColors.background(context),
                           child: ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             itemCount: _articles.length + (_hasMore ? 1 : 0),
@@ -785,7 +828,7 @@ class _ArticleCard extends StatelessWidget {
                                             : Colors.white.withValues(
                                                 alpha: 0.4,
                                               ),
-                                        size: 18,
+                                        size: 20,
                                       ),
                                     ),
                                     Text(

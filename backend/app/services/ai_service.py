@@ -1,4 +1,6 @@
 import trafilatura
+import re
+
 from google import genai
 from google.genai import types
 from app.core.config import settings
@@ -13,11 +15,17 @@ STYLE_PROMPTS = {
 }
 
 
+def clean_html(text: str) -> str:
+    """Retire les balises HTML et nettoie les espaces."""
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
 def fetch_full_text(url: str) -> str | None:
     """
     Récupère le texte principal d'une page web, sans pub ni menus.
-    Usage éphémère uniquement : ce texte n'est jamais stocké ni affiché tel quel,
-    il sert uniquement de matière première au résumé IA.
+    Usage éphémère uniquement — jamais stocké ni affiché tel quel.
     """
     try:
         downloaded = trafilatura.fetch_url(url, no_ssl=True)
@@ -31,20 +39,20 @@ def fetch_full_text(url: str) -> str | None:
 
 def should_retry(exception) -> bool:
     """
-    Renvoie False pour stopper immédiatement le retry si l'API est saturée (429).
-    Renvoie True pour autoriser le retry sur les autres erreurs (timeouts, 5xx).
+    Stoppe immédiatement si l'API est saturée (429).
+    Autorise le retry sur les autres erreurs.
     """
     error_msg = str(exception)
     if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
-        return False  # Pas de retry, inutile de harceler Google
+        return False
     return True
 
 
 @retry(
-    stop=stop_after_attempt(3), 
+    stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
     retry=retry_if_exception(should_retry),
-    reraise=True  # Remonte la vraie erreur (ex: ClientError) au lieu d'une RetryError globale
+    reraise=True
 )
 def _call_gemini(prompt: str) -> str:
     try:
@@ -52,7 +60,8 @@ def _call_gemini(prompt: str) -> str:
             model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
-                max_output_tokens=500,  # 💡 Offre assez d'espace pour ne pas couper le français
+                max_output_tokens=1000,  # ← monté pour éviter les coupures
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
         )
     except Exception as e:
@@ -68,23 +77,24 @@ def _call_gemini(prompt: str) -> str:
 def generate_summary(title: str, content: str | None, url: str, style: str) -> str:
     instruction = STYLE_PROMPTS.get(style, STYLE_PROMPTS["bullet"])
 
-    # Tente d'abord de récupérer le texte complet de l'article
+    # Nettoyage HTML du contenu RSS avant tout traitement
+    cleaned_content = clean_html(content or "")
+
+    # Tente de récupérer le texte complet de la page
     full_text = fetch_full_text(url)
 
-    # 💡 Sécurité : Si trafilatura renvoie un contenu trop court (ex: paywall ou cookie-wall),
-    # on rejette l'extraction pour forcer le repli sur la description du flux RSS.
+    # Si trafilatura retourne assez de contenu → on l'utilise
+    # Sinon → fallback sur le contenu RSS nettoyé
     if full_text and len(full_text.strip()) > 300:
         source_text = full_text
     else:
-        source_text = content or ""
-        
-    excerpt = source_text[:4000]  # Limite la taille envoyée à l'API
+        source_text = cleaned_content
 
-    # Si malgré tout le texte source reste vide, on donne une base à l'IA
+    excerpt = source_text[:4000]
+
     if not excerpt.strip():
-        excerpt = f"Aucun détail fourni. Base-toi sur le titre suivant : {title}"
+        return "Résumé indisponible : contenu source insuffisant."
 
-    # Prompt enrichi avec tes instructions de secours
     prompt = f"""Voici un article de presse.
 
 Titre: {title}
@@ -93,18 +103,16 @@ Contenu: {excerpt}
 {instruction}
 
 Important:
-- Base-toi sur le contenu fourni ci-dessus pour résumer.
-- Si le contenu fourni est trop court, vide ou illisible, n'essaie pas de faire des points clés. Au lieu de cela, fais une phrase explicative générale basée sur le titre de manière fluide.
-- Reformule entièrement avec tes propres mots, ne copie jamais de phrases du texte original.
+- Base-toi UNIQUEMENT sur le contenu fourni ci-dessus.
+- Reformule entièrement avec tes propres mots, ne copie jamais de phrases du texte.
 - Ne t'arrête JAMAIS au milieu d'une phrase."""
 
     try:
         raw_summary = _call_gemini(prompt)
     except Exception:
-        # En cas de crash persistant (comme un 429 immédiat), on renvoie un fallback propre
         return "Résumé indisponible pour le moment."
 
-    # Filet de sécurité : Gemini ignore parfois l'instruction "pas d'intro"
+    # Retire les introductions inutiles que Gemini ajoute parfois
     lines_to_strip = ["voici", "bien sûr", "voilà"]
     first_line = raw_summary.split("\n")[0].lower()
     if any(raw_summary.lower().startswith(w) for w in lines_to_strip) and ":" in first_line:
