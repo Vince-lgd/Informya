@@ -746,166 +746,200 @@ class _ArticleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final category = article['category'];
     final color = _categoryColor(category);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.2),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+            blurRadius: 24,
+            spreadRadius: -4,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: color.withValues(alpha: 0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(20),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : Colors.white.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(22),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.4),
-                width: 1.5,
+                color: Colors.white.withValues(alpha: isDark ? 0.2 : 0.6),
+                width: 1,
               ),
             ),
-            child: IntrinsicHeight(
-              child: Row(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Contenu
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Source + catégorie
-                          Row(
-                            children: [
-                              // Badge source
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: color.withValues(alpha: 0.5),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () async {
-                                        final sourceName =
-                                            article['source_name'];
-                                        if (sourceName == null) return;
-                                        if (isFavoriteSource) {
-                                          await ApiService.removeFavoriteSource(
-                                            sourceName,
-                                          );
-                                        } else {
-                                          await ApiService.addFavoriteSource(
-                                            sourceName,
-                                          );
-                                        }
-                                        await HapticFeedback.lightImpact();
-                                        // Recharge les favoris dans le feed
-                                        onFavoriteToggled?.call();
-                                      },
-                                      child: Icon(
-                                        isFavoriteSource
-                                            ? Icons.star_rounded
-                                            : Icons.star_outline_rounded,
-                                        color: isFavoriteSource
-                                            ? Colors.amber
-                                            : Colors.white.withValues(
-                                                alpha: 0.4,
-                                              ),
-                                        size: 20,
-                                      ),
-                                    ),
-                                    Text(
-                                      article['source_name'] ?? '',
-                                      style: TextStyle(
-                                        color: color,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${_categoryEmoji(category)} $category',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+                  // Source + catégorie
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () async {
+                          final sourceName = article['source_name'];
+                          if (sourceName == null) return;
+                          if (isFavoriteSource) {
+                            await ApiService.removeFavoriteSource(sourceName);
+                          } else {
+                            await ApiService.addFavoriteSource(sourceName);
+                          }
+                          await HapticFeedback.lightImpact();
+                          onFavoriteToggled?.call();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
                           ),
-
-                          const SizedBox(height: 10),
-
-                          // Titre
-                          Text(
-                            article['title'] ?? '',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              height: 1.4,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: isDark ? 0.3 : 0.18),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: color.withValues(
+                                alpha: isDark ? 0.6 : 0.5,
+                              ),
                             ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
                           ),
-
-                          const SizedBox(height: 10),
-
-                          // Date + biais
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
+                              Icon(
+                                isFavoriteSource
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                color: isFavoriteSource
+                                    ? Colors.amber
+                                    : Colors.white.withValues(
+                                        alpha: isDark ? 0.7 : 0.6,
+                                      ),
+                                size: 13,
+                              ),
+                              const SizedBox(width: 4),
                               Text(
-                                _formatDate(article['published_at']),
+                                article['source_name'] ?? '',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 14,
+                                  color: isDark
+                                      ? color.withValues(alpha: 0.95)
+                                      : color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              if (article['source_bias'] != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    _biasLabel(article['source_bias']),
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.8,
-                                      ),
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      Text(
+                        '${_categoryEmoji(category)} $category',
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.6)
+                              : Colors.black.withValues(alpha: 0.45),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Titre
+                  Text(
+                    article['title'] ?? '',
+                    style: TextStyle(
+                      color: isDark
+                          ? Colors.white
+                          : Colors.black.withValues(alpha: 0.85),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                      letterSpacing: -0.2,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Date + temps de lecture + biais
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            _formatDate(article['published_at']),
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.45)
+                                  : Colors.black.withValues(alpha: 0.35),
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (article['reading_time'] != null) ...[
+                            Text(
+                              '  ·  ',
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.3)
+                                    : Colors.black.withValues(alpha: 0.25),
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              '${article['reading_time']} min',
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.45)
+                                    : Colors.black.withValues(alpha: 0.35),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
-                    ),
+                      if (article['source_bias'] != null &&
+                          _biasLabel(article['source_bias']).isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            _biasLabel(article['source_bias']),
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.5)
+                                  : Colors.black.withValues(alpha: 0.4),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
