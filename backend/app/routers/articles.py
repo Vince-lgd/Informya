@@ -11,6 +11,13 @@ from app.models.article import Article, ReadHistory
 from app.schemas.article import ArticleDetail
 from app.services.ai_service import generate_summary
 from app.services.cache_service import get_safe_style, get_cached_summary, store_summary
+from app.core.exceptions import (
+    AIQuotaExceededError,
+    AIContentBlockedError,
+    AIEmptyResponseError,
+    AIServiceError,
+    InsufficientContentError,
+)
 
 router = APIRouter()
 
@@ -48,6 +55,7 @@ async def get_article_summary(
         return {"summary": cached, "style": style, "source": "cache"}
 
     # Génération Gemini
+        # Génération Gemini
     try:
         summary = await run_in_threadpool(
             generate_summary, article.title, article.content, article.url, style
@@ -55,13 +63,30 @@ async def get_article_summary(
         await store_summary(redis, db, article, style, summary)
         return {"summary": summary, "style": style, "source": "gemini"}
 
-    except Exception as e:
-        print(f"❌ Erreur génération résumé pour {article_id}: {repr(e)}")
-        fallback = article.ai_teaser or "Résumé indisponible pour le moment."
-        # TTL court — on réessaiera dans 10s
-        await store_summary(redis, db, article, style, fallback, ttl=10)
-        return {"summary": fallback, "style": style, "source": "fallback"}
+    except AIQuotaExceededError:
+        # Quota dépassé — cache 5 min pour laisser l'API respirer
+        fallback = "Résumé temporairement indisponible (quota API atteint)."
+        await store_summary(redis, db, article, style, fallback, ttl=300)
+        return {"summary": fallback, "style": style, "source": "quota_exceeded"}
 
+    except AIContentBlockedError:
+        # Contenu bloqué — définitif, cache 24h
+        fallback = "Résumé indisponible pour cet article."
+        await store_summary(redis, db, article, style, fallback, ttl=86400)
+        return {"summary": fallback, "style": style, "source": "blocked"}
+
+    except InsufficientContentError:
+        # Pas assez de contenu source — cache 1h, le scraper peut enrichir plus tard
+        fallback = "Contenu insuffisant pour générer un résumé."
+        await store_summary(redis, db, article, style, fallback, ttl=3600)
+        return {"summary": fallback, "style": style, "source": "insufficient"}
+
+    except (AIEmptyResponseError, AIServiceError) as e:
+        # Erreur technique — TTL court, on réessaiera vite
+        print(f"❌ Erreur IA pour {article_id}: {repr(e)}")
+        fallback = article.ai_teaser or "Résumé indisponible pour le moment."
+        await store_summary(redis, db, article, style, fallback, ttl=10)
+        return {"summary": fallback, "style": style, "source": "error"}
 
 @router.post("/{article_id}/read", status_code=204)
 async def mark_as_read(

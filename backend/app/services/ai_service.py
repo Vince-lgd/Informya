@@ -5,6 +5,13 @@ from google import genai
 from google.genai import types
 from app.core.config import settings
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
+from app.core.exceptions import (
+    AIServiceError,
+    AIQuotaExceededError,
+    AIContentBlockedError,
+    AIEmptyResponseError,
+    InsufficientContentError,
+)
 
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
@@ -44,13 +51,25 @@ def fetch_full_text(url: str) -> str | None:
 
 def should_retry(exception) -> bool:
     """
-    Stoppe immédiatement le retry si l'API est saturée (429).
-    Autorise le retry sur les autres erreurs (timeouts, 5xx).
+    Ne retente pas si le quota est dépassé ou le contenu bloqué.
+    Retente sur les erreurs transitoires (timeout, 5xx).
     """
-    error_msg = str(exception)
-    if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+    if isinstance(exception, (AIQuotaExceededError, AIContentBlockedError)):
         return False
     return True
+
+
+def _classify_gemini_error(exception: Exception) -> AIServiceError:
+    """Traduit une erreur brute de l'API en exception métier typée."""
+    msg = str(exception)
+
+    if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+        return AIQuotaExceededError("Quota API Gemini dépassé")
+
+    if "SAFETY" in msg.upper() or "blocked" in msg.lower():
+        return AIContentBlockedError("Contenu bloqué par les filtres de sécurité")
+
+    return AIServiceError(f"Erreur Gemini: {msg}")
 
 
 @retry(
@@ -69,12 +88,14 @@ def _call_gemini(prompt: str) -> str:
             ),
         )
     except Exception as e:
-        print(f"🔥 Détail erreur Gemini: {repr(e)}")
-        raise
+        typed_error = _classify_gemini_error(e)
+        print(f"🔥 {type(typed_error).__name__}: {typed_error}")
+        raise typed_error from e
 
     text = response.text
     if not text:
-        raise ValueError("Réponse vide de Gemini")
+        raise AIEmptyResponseError("Réponse vide de Gemini")
+
     return text.strip()
 
 
@@ -130,7 +151,7 @@ def generate_summary(title: str, content: str | None, url: str, style: str) -> s
     excerpt = source_text[:4000]
 
     if not excerpt.strip():
-        return "Résumé indisponible : contenu source insuffisant."
+        raise InsufficientContentError("Contenu source insuffisant")
 
     prompt = f"""Voici un article de presse.
 
@@ -145,9 +166,7 @@ Important:
 - Ne t'arrête JAMAIS au milieu d'une phrase.
 - Réponds directement, sans phrase d'introduction du type "Voici un résumé"."""
 
-    try:
-        raw_summary = _call_gemini(prompt)
-    except Exception:
-        return "Résumé indisponible pour le moment."
+    # Les exceptions typées remontent au routeur qui décide du traitement
+    raw_summary = _call_gemini(prompt)
 
     return _clean_summary(raw_summary)
