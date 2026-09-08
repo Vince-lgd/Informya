@@ -8,8 +8,7 @@ from app.core.database import get_db, get_redis
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.article import Article, ReadHistory
-from app.schemas.article import ArticleDetail, ArticleResponse, FeedResponse, BookmarkCreate
-from app.models.article import Bookmark
+from app.schemas.article import ArticleDetail
 from app.services.ai_service import generate_summary
 from app.services.cache_service import get_safe_style, get_cached_summary, store_summary
 
@@ -43,27 +42,16 @@ async def get_article_summary(
 
     style = get_safe_style(current_user.reading_style)
 
-    # L1 Redis → L2 PostgreSQL
+    # Cache L1 (Redis) → L2 (PostgreSQL)
     cached = await get_cached_summary(redis, article, style)
     if cached:
-        return {"summary": cached, "style": style}
+        return {"summary": cached, "style": style, "source": "cache"}
 
-   # Génération Gemini
+    # Génération Gemini
     try:
-        # TODO: retirer ces print avant le déploiement Railway
-        # 🔍 ON AJOUTE CES LIGNES POUR ESPIONNER LE TEXTE AVANT L'IA :
-        texte_content = str(article.content) if article.content else ""
-        print(f"\n--- 🕵️‍♂️ TEXTE ENVOYÉ À GEMINI (Longueur: {len(texte_content)}) ---")
-        print(texte_content[:500] + "...\n") 
-        
         summary = await run_in_threadpool(
             generate_summary, article.title, article.content, article.url, style
         )
-        
-        # 🔍 ON AJOUTE CES LIGNES POUR ESPIONNER LE RÉSULTAT DE L'IA :
-        print(f"--- 🤖 RÉPONSE DE GEMINI (Style attendu: {style}) ---")
-        print(summary + "\n")
-        
         await store_summary(redis, db, article, style, summary)
         return {"summary": summary, "style": style, "source": "gemini"}
 

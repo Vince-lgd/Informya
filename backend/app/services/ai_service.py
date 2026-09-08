@@ -1,5 +1,5 @@
-import trafilatura
 import re
+import trafilatura
 
 from google import genai
 from google.genai import types
@@ -9,14 +9,14 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 STYLE_PROMPTS = {
-    "bullet": "Rédige un résumé en 3-4 points (puces •). Ne mets pas de phrase d'introduction ni de conclusion.",
+    "bullet": "Rédige un résumé en 3-4 points, chaque point commençant par •. Ne mets pas de phrase d'introduction ni de conclusion.",
     "journalistic": "Rédige un résumé fluide de 3-4 phrases, ton journalistique neutre. Pas d'intro, pas de conclusion.",
     "simple": "Rédige une explication simple en 3-4 phrases, pour quelqu'un qui découvre le sujet. Pas d'intro, pas de conclusion.",
 }
 
 
 def clean_html(text: str) -> str:
-    """Retire les balises HTML et nettoie les espaces."""
+    """Retire les balises HTML et normalise les espaces."""
     text = re.sub(r'<[^>]+>', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
@@ -25,13 +25,18 @@ def clean_html(text: str) -> str:
 def fetch_full_text(url: str) -> str | None:
     """
     Récupère le texte principal d'une page web, sans pub ni menus.
-    Usage éphémère uniquement — jamais stocké ni affiché tel quel.
+    Usage éphémère uniquement — jamais stocké ni affiché tel quel,
+    sert uniquement de matière première au résumé IA.
     """
     try:
         downloaded = trafilatura.fetch_url(url, no_ssl=True)
         if not downloaded:
             return None
-        text = trafilatura.extract(downloaded, include_comments=False, include_tables=False)
+        text = trafilatura.extract(
+            downloaded,
+            include_comments=False,
+            include_tables=False,
+        )
         return text
     except Exception:
         return None
@@ -39,8 +44,8 @@ def fetch_full_text(url: str) -> str | None:
 
 def should_retry(exception) -> bool:
     """
-    Stoppe immédiatement si l'API est saturée (429).
-    Autorise le retry sur les autres erreurs.
+    Stoppe immédiatement le retry si l'API est saturée (429).
+    Autorise le retry sur les autres erreurs (timeouts, 5xx).
     """
     error_msg = str(exception)
     if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
@@ -52,7 +57,7 @@ def should_retry(exception) -> bool:
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
     retry=retry_if_exception(should_retry),
-    reraise=True
+    reraise=True,
 )
 def _call_gemini(prompt: str) -> str:
     try:
@@ -60,8 +65,7 @@ def _call_gemini(prompt: str) -> str:
             model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
-                max_output_tokens=1000,  # ← monté pour éviter les coupures
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
+                max_output_tokens=3000,
             ),
         )
     except Exception as e:
@@ -74,13 +78,46 @@ def _call_gemini(prompt: str) -> str:
     return text.strip()
 
 
+def _clean_summary(raw: str) -> str:
+    """
+    Nettoie la sortie brute de Gemini :
+    retire l'intro, normalise les puces markdown, supprime les lignes orphelines.
+    """
+    lines = raw.split("\n")
+    cleaned_lines = []
+    started = False
+
+    for line in lines:
+        stripped = line.strip()
+        # On commence à garder dès la première puce rencontrée
+        if stripped.startswith(("*", "•", "-")):
+            started = True
+        if started and stripped:
+            cleaned_lines.append(line)
+
+    # Si aucune puce trouvée (styles journalistic / simple), on garde le texte tel quel
+    if cleaned_lines:
+        raw = "\n".join(cleaned_lines)
+
+    # Normalise les puces markdown en puces propres
+    raw = re.sub(r'^\s*[\*\-]\s+', '• ', raw, flags=re.MULTILINE)
+
+    # Supprime les lignes ne contenant qu'une puce orpheline
+    raw = re.sub(r'^\s*[•\*\-]\s*$', '', raw, flags=re.MULTILINE)
+
+    # Réduit les sauts de ligne multiples
+    raw = re.sub(r'\n{3,}', '\n\n', raw)
+
+    return raw.strip()
+
+
 def generate_summary(title: str, content: str | None, url: str, style: str) -> str:
     instruction = STYLE_PROMPTS.get(style, STYLE_PROMPTS["bullet"])
 
-    # Nettoyage HTML du contenu RSS avant tout traitement
+    # Nettoyage HTML du contenu RSS
     cleaned_content = clean_html(content or "")
 
-    # Tente de récupérer le texte complet de la page
+    # Tente d'abord de récupérer le texte complet de la page
     full_text = fetch_full_text(url)
 
     # Si trafilatura retourne assez de contenu → on l'utilise
@@ -105,17 +142,12 @@ Contenu: {excerpt}
 Important:
 - Base-toi UNIQUEMENT sur le contenu fourni ci-dessus.
 - Reformule entièrement avec tes propres mots, ne copie jamais de phrases du texte.
-- Ne t'arrête JAMAIS au milieu d'une phrase."""
+- Ne t'arrête JAMAIS au milieu d'une phrase.
+- Réponds directement, sans phrase d'introduction du type "Voici un résumé"."""
 
     try:
         raw_summary = _call_gemini(prompt)
     except Exception:
         return "Résumé indisponible pour le moment."
 
-    # Retire les introductions inutiles que Gemini ajoute parfois
-    lines_to_strip = ["voici", "bien sûr", "voilà"]
-    first_line = raw_summary.split("\n")[0].lower()
-    if any(raw_summary.lower().startswith(w) for w in lines_to_strip) and ":" in first_line:
-        raw_summary = raw_summary.split(":", 1)[1].strip()
-
-    return raw_summary
+    return _clean_summary(raw_summary)
