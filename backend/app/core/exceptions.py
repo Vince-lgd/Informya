@@ -28,3 +28,7 @@ class AIEmptyResponseError(AIServiceError):
 class InsufficientContentError(InformyaError):
     """Contenu source insuffisant pour générer un résumé."""
     pass
+
+class AISchemaValidationError(AIServiceError):
+    """La réponse du modèle ne respecte pas le schéma attendu."""
+    pass

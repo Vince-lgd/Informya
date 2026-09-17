@@ -1,5 +1,6 @@
 import re
 import trafilatura
+import json
 
 from google import genai
 from google.genai import types
@@ -10,15 +11,19 @@ from app.core.exceptions import (
     AIQuotaExceededError,
     AIContentBlockedError,
     AIEmptyResponseError,
+    AISchemaValidationError,
     InsufficientContentError,
 )
+from pydantic import ValidationError
+from app.schemas.ai import ArticleSummary
+
 
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 STYLE_PROMPTS = {
-    "bullet": "Rédige un résumé en 3-4 points, chaque point commençant par •. Ne mets pas de phrase d'introduction ni de conclusion.",
-    "journalistic": "Rédige un résumé fluide de 3-4 phrases, ton journalistique neutre. Pas d'intro, pas de conclusion.",
-    "simple": "Rédige une explication simple en 3-4 phrases, pour quelqu'un qui découvre le sujet. Pas d'intro, pas de conclusion.",
+    "bullet": "Rédige 3 à 4 points clés factuels et concis.",
+    "journalistic": "Rédige 3 à 4 points au ton journalistique neutre, phrases complètes et fluides.",
+    "simple": "Rédige 3 à 4 points en langage simple, accessible à quelqu'un qui découvre le sujet.",
 }
 
 
@@ -78,13 +83,19 @@ def _classify_gemini_error(exception: Exception) -> AIServiceError:
     retry=retry_if_exception(should_retry),
     reraise=True,
 )
-def _call_gemini(prompt: str) -> str:
+def _call_gemini(prompt: str) -> ArticleSummary:
+    """
+    Appelle Gemini en mode sortie structurée.
+    Retourne un objet validé par Pydantic, jamais du texte brut.
+    """
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 max_output_tokens=3000,
+                response_mime_type="application/json",
+                response_schema=ArticleSummary,
             ),
         )
     except Exception as e:
@@ -92,57 +103,24 @@ def _call_gemini(prompt: str) -> str:
         print(f"🔥 {type(typed_error).__name__}: {typed_error}")
         raise typed_error from e
 
-    text = response.text
-    if not text:
+    if not response.text:
         raise AIEmptyResponseError("Réponse vide de Gemini")
 
-    return text.strip()
-
-
-def _clean_summary(raw: str) -> str:
-    """
-    Nettoie la sortie brute de Gemini :
-    retire l'intro, normalise les puces markdown, supprime les lignes orphelines.
-    """
-    lines = raw.split("\n")
-    cleaned_lines = []
-    started = False
-
-    for line in lines:
-        stripped = line.strip()
-        # On commence à garder dès la première puce rencontrée
-        if stripped.startswith(("*", "•", "-")):
-            started = True
-        if started and stripped:
-            cleaned_lines.append(line)
-
-    # Si aucune puce trouvée (styles journalistic / simple), on garde le texte tel quel
-    if cleaned_lines:
-        raw = "\n".join(cleaned_lines)
-
-    # Normalise les puces markdown en puces propres
-    raw = re.sub(r'^\s*[\*\-]\s+', '• ', raw, flags=re.MULTILINE)
-
-    # Supprime les lignes ne contenant qu'une puce orpheline
-    raw = re.sub(r'^\s*[•\*\-]\s*$', '', raw, flags=re.MULTILINE)
-
-    # Réduit les sauts de ligne multiples
-    raw = re.sub(r'\n{3,}', '\n\n', raw)
-
-    return raw.strip()
+    # Validation stricte du schéma — rien de non conforme n'entre en base
+    try:
+        return ArticleSummary.model_validate_json(response.text)
+    except ValidationError as e:
+        raise AISchemaValidationError(f"Schéma invalide: {e}") from e
+    except json.JSONDecodeError as e:
+        raise AISchemaValidationError(f"JSON malformé: {e}") from e
 
 
 def generate_summary(title: str, content: str | None, url: str, style: str) -> str:
     instruction = STYLE_PROMPTS.get(style, STYLE_PROMPTS["bullet"])
 
-    # Nettoyage HTML du contenu RSS
     cleaned_content = clean_html(content or "")
-
-    # Tente d'abord de récupérer le texte complet de la page
     full_text = fetch_full_text(url)
 
-    # Si trafilatura retourne assez de contenu → on l'utilise
-    # Sinon → fallback sur le contenu RSS nettoyé
     if full_text and len(full_text.strip()) > 300:
         source_text = full_text
     else:
@@ -160,13 +138,12 @@ Contenu: {excerpt}
 
 {instruction}
 
-Important:
+Contraintes:
 - Base-toi UNIQUEMENT sur le contenu fourni ci-dessus.
 - Reformule entièrement avec tes propres mots, ne copie jamais de phrases du texte.
-- Ne t'arrête JAMAIS au milieu d'une phrase.
-- Réponds directement, sans phrase d'introduction du type "Voici un résumé"."""
+- Chaque point doit être une phrase complète.
+- Indique "high" si le contenu source est riche, "medium" s'il est partiel, "low" s'il est très pauvre."""
 
-    # Les exceptions typées remontent au routeur qui décide du traitement
-    raw_summary = _call_gemini(prompt)
+    summary = _call_gemini(prompt)
 
-    return _clean_summary(raw_summary)
+    return summary.to_display_text()

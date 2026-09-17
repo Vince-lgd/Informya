@@ -1,5 +1,5 @@
 from app.utils.text import calculate_reading_time, detect_content_type
-from app.services.ai_service import clean_html, _clean_summary
+from app.services.ai_service import clean_html
 from app.services.cache_service import get_safe_style, get_cache_key
 
 
@@ -28,19 +28,6 @@ def test_clean_html():
 
     # Espaces multiples normalisés
     assert clean_html("a    b\n\nc") == "a b c"
-
-
-def test_clean_summary_removes_intro():
-    raw = "Voici un résumé en 3 points :\n* Premier point\n* Second point"
-    result = _clean_summary(raw)
-    assert "Voici" not in result
-    assert "• Premier point" in result
-
-
-def test_clean_summary_normalizes_bullets():
-    raw = "* Point un\n- Point deux"
-    result = _clean_summary(raw)
-    assert result.count("•") == 2
 
 
 def test_get_safe_style():

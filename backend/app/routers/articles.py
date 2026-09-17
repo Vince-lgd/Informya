@@ -15,6 +15,7 @@ from app.core.exceptions import (
     AIQuotaExceededError,
     AIContentBlockedError,
     AIEmptyResponseError,
+    AISchemaValidationError,
     AIServiceError,
     InsufficientContentError,
 )
@@ -80,6 +81,13 @@ async def get_article_summary(
         fallback = "Contenu insuffisant pour générer un résumé."
         await store_summary(redis, db, article, style, fallback, ttl=3600)
         return {"summary": fallback, "style": style, "source": "insufficient"}
+
+    except AISchemaValidationError as e:
+        # Le modèle a renvoyé une structure invalide malgré les 3 tentatives
+        print(f"❌ Schéma IA invalide pour {article_id}: {repr(e)}")
+        fallback = article.ai_teaser or "Résumé indisponible pour le moment."
+        await store_summary(redis, db, article, style, fallback, ttl=60)
+        return {"summary": fallback, "style": style, "source": "schema_error"}
 
     except (AIEmptyResponseError, AIServiceError) as e:
         # Erreur technique — TTL court, on réessaiera vite
