@@ -98,6 +98,99 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
+  // ── Styles partagés des chips ────────────────────────────
+
+  /// Point coloré associé à une catégorie. null = pas de point.
+  Color? _categoryDotColor(String cat) {
+    switch (cat) {
+      case 'Politique':
+        return const Color(0xFF0288D1);
+      case 'Sport':
+        return const Color(0xFF27AE60);
+      case 'Bourse':
+        return const Color(0xFFF39C12);
+      case 'Tech':
+        return const Color(0xFF8E44AD);
+      case 'Art':
+        return const Color(0xFFE91E8C);
+      case 'Science':
+        return const Color(0xFF8D6E63);
+      default:
+        return null;
+    }
+  }
+
+  BoxDecoration _chipDecoration(bool isSelected) {
+    return BoxDecoration(
+      color: isSelected
+          ? AppColors.glassFill(context)
+          : AppColors.glassFill(context).withValues(alpha: 0.75),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: isSelected
+            ? AppColors.glassBorder(context)
+            : AppColors.glassBorder(context).withValues(alpha: 0.6),
+      ),
+    );
+  }
+
+  TextStyle _chipTextStyle(bool isSelected) {
+    return TextStyle(
+      color: AppColors.textPrimary(
+        context,
+      ).withValues(alpha: isSelected ? 1.0 : 0.72),
+      fontSize: 13,
+      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+    );
+  }
+
+  Widget _filterLabel(String text, BuildContext ctx) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: AppColors.textSecondary(ctx),
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  Widget _filterChip(
+    String label,
+    String? value,
+    String? selected,
+    Function(String?) onTap,
+  ) {
+    final isSelected = selected == value;
+    return Tappable(
+      onTap: () => onTap(value),
+      scale: 0.94,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: _chipDecoration(isSelected),
+        child: Text(label, style: _chipTextStyle(isSelected)),
+      ),
+    );
+  }
+
+  Widget _filterChipInt(
+    String label,
+    int? value,
+    int? selected,
+    Function(int?) onTap,
+  ) {
+    final isSelected = selected == value;
+    return Tappable(
+      onTap: () => onTap(value),
+      scale: 0.94,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: _chipDecoration(isSelected),
+        child: Text(label, style: _chipTextStyle(isSelected)),
+      ),
+    );
+  }
+
   // ── Bottom sheet filtres ─────────────────────────────────
 
   void _showFilters() {
@@ -326,6 +419,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -335,89 +429,6 @@ class _FeedScreenState extends State<FeedScreen> {
           },
         );
       },
-    );
-  }
-
-  Widget _filterLabel(String text, BuildContext ctx) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: AppColors.textSecondary(ctx),
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-
-  Widget _filterChip(
-    String label,
-    String? value,
-    String? selected,
-    Function(String?) onTap,
-  ) {
-    final isSelected = selected == value;
-    return Tappable(
-      onTap: () => onTap(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.glassFill(context)
-              : AppColors.glassFill(context).withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.glassBorder(context)
-                : AppColors.glassBorder(context).withValues(alpha: 0.4),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? AppColors.textPrimary(context)
-                : AppColors.textSecondary(context),
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _filterChipInt(
-    String label,
-    int? value,
-    int? selected,
-    Function(int?) onTap,
-  ) {
-    final isSelected = selected == value;
-    return Tappable(
-      onTap: () => onTap(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.glassFill(context)
-              : AppColors.glassFill(context).withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.glassBorder(context)
-                : AppColors.glassBorder(context).withValues(alpha: 0.4),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? AppColors.textPrimary(context)
-                : AppColors.textSecondary(context),
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
-      ),
     );
   }
 
@@ -475,7 +486,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                     ? AppColors.glassFill(context)
                                     : AppColors.glassFill(
                                         context,
-                                      ).withValues(alpha: 0.6),
+                                      ).withValues(alpha: 0.75),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: AppColors.glassBorder(context),
@@ -496,7 +507,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
                 const SizedBox(height: 20),
 
-                // Chips catégories
+                // Chips catégories avec point coloré
                 SizedBox(
                   height: 38,
                   child: ListView.builder(
@@ -506,44 +517,39 @@ class _FeedScreenState extends State<FeedScreen> {
                     itemBuilder: (context, index) {
                       final cat = _categories[index];
                       final isSelected = (_selectedCategory ?? 'Tout') == cat;
+                      final dotColor = _categoryDotColor(cat);
 
                       return Tappable(
                         onTap: () {
                           setState(() => _selectedCategory = cat);
                           _loadFeed(refresh: true);
                         },
+                        scale: 0.94,
                         child: Container(
                           margin: const EdgeInsets.only(right: 10),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
                           ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.glassFill(context)
-                                : AppColors.glassFill(
-                                    context,
-                                  ).withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.glassBorder(context)
-                                  : AppColors.glassBorder(
-                                      context,
-                                    ).withValues(alpha: 0.4),
-                            ),
-                          ),
-                          child: Text(
-                            cat,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? AppColors.textPrimary(context)
-                                  : AppColors.textSecondary(context),
-                              fontSize: 13,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                            ),
+                          decoration: _chipDecoration(isSelected),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (dotColor != null) ...[
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: dotColor.withValues(
+                                      alpha: isSelected ? 1.0 : 0.6,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                              ],
+                              Text(cat, style: _chipTextStyle(isSelected)),
+                            ],
                           ),
                         ),
                       );
@@ -812,6 +818,7 @@ class _ArticleCard extends StatelessWidget {
                           await HapticFeedback.lightImpact();
                           onFavoriteToggled?.call();
                         },
+                        scale: 0.94,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
