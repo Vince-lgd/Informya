@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../widgets/tappable.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,6 +16,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _user;
   bool _isLoading = true;
+  List<String> _favoriteSources = [];
 
   @override
   void initState() {
@@ -22,15 +24,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
-  List<String> _favoriteSources = [];
-
   Future<void> _loadProfile() async {
     try {
-      // 1. On récupère les deux informations séquentiellement
       final userResult = await ApiService.getMe();
       final sourcesResult = await ApiService.getFavoriteSources();
 
-      // 2. Si tout s'est bien passé, on met à jour l'état en une seule fois
       if (mounted) {
         setState(() {
           _user = userResult;
@@ -39,49 +37,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      // 3. S'il y a la moindre erreur (sur getMe ou getFavoriteSources)
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
   }
 
-  void _copyInviteCode() {
-    final code = _user?['invite_code'];
-    if (code == null) return;
-    Clipboard.setData(ClipboardData(text: code));
-    HapticFeedback.lightImpact();
-
-    // 1. Détecter le mode actuel (Sombre ou Clair)
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    // 2. Définir les couleurs inversées
-    final snackBgColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.95)
-        : Colors.black.withValues(alpha: 0.85);
-
-    final snackContentColor = isDarkMode ? Colors.black87 : Colors.white;
+  /// SnackBar cohérente avec le thème courant
+  void _showSnack(String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? Colors.white : const Color(0xFF1A2E20);
+    final contentColor = isDark ? const Color(0xFF1A2E20) : Colors.white;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        // ❌ Le "const" a été retiré ici pour accepter les variables dynamiques
         content: Row(
           children: [
-            Icon(
-              Icons.check_circle_rounded,
-              color: snackContentColor, // 🟢 Couleur dynamique
-              size: 18,
-            ),
+            Icon(Icons.check_circle_rounded, color: contentColor, size: 18),
             const SizedBox(width: 8),
             Text(
-              'Code copié !',
+              message,
               style: TextStyle(
-                color: snackContentColor,
-              ), // 🟢 Couleur dynamique
+                color: contentColor,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
-        backgroundColor: snackBgColor, // 🟢 Couleur dynamique
+        backgroundColor: bgColor,
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -89,179 +72,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showReadingStylePicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.background(context).withValues(alpha: 0.95),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Style de lecture',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Choisissez le style de lecture pour vos résumés d\'articles',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _styleOption(
-                    'bullet',
-                    'Points clés',
-                    'Résumé par listes à puces',
-                  ),
-                  const SizedBox(height: 10),
-                  _styleOption(
-                    'journalistic',
-                    'Journalistique',
-                    'Ton article classique',
-                  ),
-                  const SizedBox(height: 10),
-                  _styleOption(
-                    'simple',
-                    'Vulgarisé',
-                    'Explications simplifiées',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _styleOption(String value, String title, String subtitle) {
-    final isSelected = _user?['reading_style'] == value;
-    return GestureDetector(
-      onTap: () async {
-        Navigator.pop(context);
-        try {
-          final result = await ApiService.updateReadingStyle(value);
-          await HapticFeedback.lightImpact();
-          if (mounted) {
-            setState(() => _user = result);
-
-            // 🟢 1. Détecter si le système affiche du mode sombre
-            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-            // 🟢 2. Définir les couleurs inversées (clair si sombre, sombre si clair)
-            final snackBgColor = isDarkMode
-                ? Colors.white.withValues(
-                    alpha: 0.95,
-                  ) // Notification claire sur fond sombre
-                : Colors.black.withValues(
-                    alpha: 0.85,
-                  ); // Notification sombre sur fond clair
-
-            final snackContentColor = isDarkMode
-                ? Colors
-                      .black87 // Texte/Icône sombre si notification claire
-                : Colors.white; // Texte/Icône clair si notification sombre
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    Icon(
-                      Icons.check_circle_rounded,
-                      color: snackContentColor, // 🟢 Couleur dynamique
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Style de lecture mis à jour',
-                      style: TextStyle(
-                        color: snackContentColor, // 🟢 Couleur dynamique
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: snackBgColor, // 🟢 Couleur dynamique
-                duration: const Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-          }
-        } catch (e) {
-          // Erreur silencieuse
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.white.withValues(alpha: 0.25)
-              : Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? Colors.white.withValues(alpha: 0.5)
-                : Colors.white.withValues(alpha: 0.15),
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-          ],
-        ),
-      ),
-    );
+  void _copyInviteCode() {
+    final code = _user?['invite_code'];
+    if (code == null) return;
+    Clipboard.setData(ClipboardData(text: code));
+    HapticFeedback.lightImpact();
+    _showSnack('Code copié !');
   }
 
   Future<void> _logout() async {
@@ -270,39 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     }
-  }
-
-  Widget _themeOption({
-    required IconData icon,
-    required String label,
-    required ThemeMode mode,
-  }) {
-    final isSelected = themeController.themeMode == mode;
-    return GestureDetector(
-      onTap: () => themeController.setThemeMode(mode),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (isSelected)
-            const Icon(
-              Icons.check_circle_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-        ],
-      ),
-    );
   }
 
   String _readingStyleLabel(String? style) {
@@ -342,6 +125,179 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ── Sélecteur de style de lecture ────────────────────────
+
+  void _showReadingStylePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.background(context).withValues(alpha: 0.97),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                border: Border.all(color: AppColors.glassBorder(context)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Style de lecture',
+                    style: TextStyle(
+                      color: AppColors.textPrimary(context),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Choisissez le style de lecture pour vos résumés d\'articles',
+                    style: TextStyle(
+                      color: AppColors.textSecondary(context),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _styleOption(
+                    'bullet',
+                    'Points clés',
+                    'Résumé par listes à puces',
+                  ),
+                  const SizedBox(height: 10),
+                  _styleOption(
+                    'journalistic',
+                    'Journalistique',
+                    'Ton article classique',
+                  ),
+                  const SizedBox(height: 10),
+                  _styleOption(
+                    'simple',
+                    'Vulgarisé',
+                    'Explications simplifiées',
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _styleOption(String value, String title, String subtitle) {
+    final isSelected = _user?['reading_style'] == value;
+
+    return Tappable(
+      onTap: () async {
+        Navigator.pop(context);
+        try {
+          final result = await ApiService.updateReadingStyle(value);
+          await HapticFeedback.lightImpact();
+          if (mounted) {
+            setState(() => _user = result);
+            _showSnack('Style de lecture mis à jour');
+          }
+        } catch (e) {
+          // Erreur silencieuse
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.glassFill(context)
+              : AppColors.glassFill(context).withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.glassBorder(context)
+                : AppColors.glassBorder(context).withValues(alpha: 0.4),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: AppColors.textPrimary(context),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppColors.textSecondary(context),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.textPrimary(context),
+                size: 20,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Sélecteur de thème ───────────────────────────────────
+
+  Widget _themeOption({
+    required IconData icon,
+    required String label,
+    required ThemeMode mode,
+  }) {
+    final isSelected = themeController.themeMode == mode;
+
+    return Tappable(
+      onTap: () => themeController.setThemeMode(mode),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.icon(context), size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: AppColors.textPrimary(context),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          if (isSelected)
+            Icon(
+              Icons.check_circle_rounded,
+              color: AppColors.textPrimary(context),
+              size: 20,
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Build ────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -351,28 +307,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             top: -60,
             right: -60,
-            child: _blurCircle(200, const Color(0xFFB8CDB8)),
+            child: _blurCircle(200, AppColors.circle1(context)),
           ),
           Positioned(
             bottom: 100,
             left: -80,
-            child: _blurCircle(180, const Color(0xFF7A9E8A)),
+            child: _blurCircle(180, AppColors.circle2(context)),
           ),
 
           SafeArea(
             child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
+                ? Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.textPrimary(context),
+                    ),
                   )
                 : SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Profil',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary(context),
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.5,
@@ -381,6 +339,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         const SizedBox(height: 28),
 
+                        // Carte identité
                         _glassCard(
                           child: Row(
                             children: [
@@ -389,9 +348,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 height: 56,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.25),
+                                  color: AppColors.glassFill(context),
                                   border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.4),
+                                    color: AppColors.glassBorder(context),
                                     width: 1.5,
                                   ),
                                 ),
@@ -401,8 +360,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         .toString()
                                         .substring(0, 1)
                                         .toUpperCase(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary(context),
                                       fontSize: 22,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -416,8 +375,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   children: [
                                     Text(
                                       _user?['username'] ?? '',
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary(context),
                                         fontSize: 18,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -426,9 +385,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     Text(
                                       _user?['email'] ?? '',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.7,
-                                        ),
+                                        color: AppColors.textSecondary(context),
                                         fontSize: 14,
                                       ),
                                     ),
@@ -436,9 +393,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     Text(
                                       _formatJoinDate(_user?['created_at']),
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.6,
-                                        ),
+                                        color: AppColors.textTertiary(context),
                                         fontSize: 12,
                                       ),
                                     ),
@@ -451,26 +406,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         const SizedBox(height: 16),
 
+                        // Style de lecture
                         _sectionLabel(
                           'Style de lecture des résumés d\'articles',
                         ),
                         const SizedBox(height: 8),
-                        GestureDetector(
+                        Tappable(
                           onTap: _showReadingStylePicker,
                           child: _glassCard(
                             child: Row(
                               children: [
                                 Icon(
                                   Icons.auto_awesome_rounded,
-                                  color: Colors.white.withValues(alpha: 0.8),
+                                  color: AppColors.icon(context),
                                   size: 20,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     _readingStyleLabel(_user?['reading_style']),
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary(context),
                                       fontSize: 15,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -478,7 +434,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                                 Icon(
                                   Icons.chevron_right_rounded,
-                                  color: Colors.white.withValues(alpha: 0.5),
+                                  color: AppColors.textTertiary(context),
                                 ),
                               ],
                             ),
@@ -487,6 +443,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         const SizedBox(height: 16),
 
+                        // Apparence
                         _sectionLabel('Apparence'),
                         const SizedBox(height: 8),
                         ListenableBuilder(
@@ -501,7 +458,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     mode: ThemeMode.light,
                                   ),
                                   Divider(
-                                    color: Colors.white.withValues(alpha: 0.15),
+                                    color: AppColors.glassBorder(context),
                                     height: 20,
                                   ),
                                   _themeOption(
@@ -510,7 +467,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     mode: ThemeMode.dark,
                                   ),
                                   Divider(
-                                    color: Colors.white.withValues(alpha: 0.15),
+                                    color: AppColors.glassBorder(context),
                                     height: 20,
                                   ),
                                   _themeOption(
@@ -523,8 +480,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             );
                           },
                         ),
+
                         const SizedBox(height: 16),
 
+                        // Sources favorites
                         _sectionLabel('Mes sources favorites'),
                         const SizedBox(height: 8),
                         _glassCard(
@@ -535,7 +494,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Text(
                                   'Aucune source favorite — appuie sur ⭐ dans le feed',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.5),
+                                    color: AppColors.textSecondary(context),
                                     fontSize: 13,
                                   ),
                                 )
@@ -554,14 +513,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         Expanded(
                                           child: Text(
                                             source,
-                                            style: const TextStyle(
-                                              color: Colors.white,
+                                            style: TextStyle(
+                                              color: AppColors.textPrimary(
+                                                context,
+                                              ),
                                               fontSize: 15,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         ),
-                                        GestureDetector(
+                                        Tappable(
                                           onTap: () async {
                                             await ApiService.removeFavoriteSource(
                                               source,
@@ -571,8 +532,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           },
                                           child: Icon(
                                             Icons.close_rounded,
-                                            color: Colors.white.withValues(
-                                              alpha: 0.4,
+                                            color: AppColors.textTertiary(
+                                              context,
                                             ),
                                             size: 18,
                                           ),
@@ -584,18 +545,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ),
+
                         const SizedBox(height: 16),
 
+                        // Code d'invitation
                         _sectionLabel('Inviter famille & amis'),
                         const SizedBox(height: 8),
-                        GestureDetector(
+                        Tappable(
                           onTap: _copyInviteCode,
                           child: _glassCard(
                             child: Row(
                               children: [
                                 Icon(
                                   Icons.people_alt_rounded,
-                                  color: Colors.white.withValues(alpha: 0.8),
+                                  color: AppColors.icon(context),
                                   size: 20,
                                 ),
                                 const SizedBox(width: 12),
@@ -607,8 +570,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       Text(
                                         'Code d\'invitation',
                                         style: TextStyle(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.6,
+                                          color: AppColors.textSecondary(
+                                            context,
                                           ),
                                           fontSize: 12,
                                         ),
@@ -616,8 +579,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       const SizedBox(height: 2),
                                       Text(
                                         _user?['invite_code'] ?? '',
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        style: TextStyle(
+                                          color: AppColors.textPrimary(context),
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                           letterSpacing: 1.2,
@@ -628,7 +591,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                                 Icon(
                                   Icons.copy_rounded,
-                                  color: Colors.white.withValues(alpha: 0.6),
+                                  color: AppColors.textTertiary(context),
                                   size: 18,
                                 ),
                               ],
@@ -638,7 +601,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         const SizedBox(height: 32),
 
-                        GestureDetector(
+                        // Déconnexion
+                        Tappable(
                           onTap: _logout,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
@@ -651,7 +615,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: Colors.red.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: Colors.red.withValues(alpha: 0.3),
+                                    color: Colors.red.withValues(alpha: 0.4),
                                   ),
                                 ),
                                 child: const Row(
@@ -659,14 +623,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   children: [
                                     Icon(
                                       Icons.logout_rounded,
-                                      color: Colors.white,
+                                      color: Color(0xFFB3261E),
                                       size: 18,
                                     ),
                                     SizedBox(width: 8),
                                     Text(
                                       'Se déconnecter',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: Color(0xFFB3261E),
                                         fontSize: 15,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -686,13 +650,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ── Helpers UI ───────────────────────────────────────────
+
   Widget _sectionLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.6),
+          color: AppColors.textSecondary(context),
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
@@ -708,10 +674,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.25),
+            color: AppColors.glassFill(context),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.4),
+              color: AppColors.glassBorder(context),
               width: 1.5,
             ),
           ),

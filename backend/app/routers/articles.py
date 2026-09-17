@@ -3,6 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from uuid import UUID
+from app.utils.text import calculate_reading_time_from_words
 
 from app.core.database import get_db, get_redis
 from app.core.dependencies import get_current_user
@@ -56,13 +57,22 @@ async def get_article_summary(
         return {"summary": cached, "style": style, "source": "cache"}
 
     # Génération Gemini
-        # Génération Gemini
     try:
-        summary = await run_in_threadpool(
+        summary, word_count = await run_in_threadpool(
             generate_summary, article.title, article.content, article.url, style
         )
+
+        # Recalcule le temps de lecture avec le texte complet si disponible
+        if word_count:
+            article.reading_time = calculate_reading_time_from_words(word_count)
+
         await store_summary(redis, db, article, style, summary)
-        return {"summary": summary, "style": style, "source": "gemini"}
+        return {
+            "summary": summary,
+            "style": style,
+            "source": "gemini",
+            "reading_time": article.reading_time,
+        }
 
     except AIQuotaExceededError:
         # Quota dépassé — cache 5 min pour laisser l'API respirer

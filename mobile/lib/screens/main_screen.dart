@@ -4,6 +4,7 @@ import 'feed_screen.dart';
 import 'bookmarks_screen.dart';
 import 'profile_screen.dart';
 import '../theme/app_theme.dart';
+import '../widgets/tappable.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -31,10 +32,10 @@ class _MainScreenState extends State<MainScreen> {
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: AppColors.glassFill(context),
               border: Border(
                 top: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: AppColors.glassBorder(context),
                   width: 1,
                 ),
               ),
@@ -92,33 +93,33 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Tappable(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.white.withValues(alpha: 0.25)
-              : Colors.transparent,
+          color: isSelected ? AppColors.glassFill(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: isSelected
-              ? Border.all(color: Colors.white.withValues(alpha: 0.4))
+              ? Border.all(color: AppColors.glassBorder(context))
               : null,
         ),
         child: Row(
           children: [
             Icon(
               icon,
-              color: Colors.white.withValues(alpha: isSelected ? 1 : 0.5),
+              color: isSelected
+                  ? AppColors.textPrimary(context)
+                  : AppColors.textTertiary(context),
               size: 22,
             ),
             if (isSelected) ...[
               const SizedBox(width: 6),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppColors.textPrimary(context),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),

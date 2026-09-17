@@ -1,9 +1,10 @@
 import 'dart:ui';
-import '../services/api_service.dart';
-import '../theme/app_theme.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+
+import '../services/api_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/tappable.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -63,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       setState(() => _error = 'Erreur de connexion au serveur');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -73,21 +74,21 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.background(context),
       body: Stack(
         children: [
-          // Cercles décoratifs Liquid Glass
+          // Cercles décoratifs
           Positioned(
             top: -80,
             left: -60,
-            child: _blurCircle(220, const Color(0xFFB8CDB8)),
+            child: _blurCircle(220, AppColors.circle1(context)),
           ),
           Positioned(
             top: 200,
             right: -80,
-            child: _blurCircle(180, const Color(0xFF7A9E8A)),
+            child: _blurCircle(180, AppColors.circle2(context)),
           ),
           Positioned(
             bottom: 80,
             left: -40,
-            child: _blurCircle(160, const Color(0xFFA8C4A8)),
+            child: _blurCircle(160, AppColors.circle3(context)),
           ),
 
           SafeArea(
@@ -98,11 +99,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const SizedBox(height: 80),
 
-                  // Titre principal
+                  // Titre
                   Text(
                     _isRegister ? 'Créer un\ncompte' : 'Bon\nretour',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppColors.textPrimary(context),
                       fontSize: 52,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -1.5,
@@ -115,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? 'Rejoins Informya'
                         : 'Content de te revoir sur Informya',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: AppColors.textSecondary(context),
                       fontSize: 18,
                       fontWeight: FontWeight.w400,
                     ),
@@ -123,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 48),
 
-                  // Carte Liquid Glass — opacité renforcée
+                  // Formulaire
                   Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(28),
@@ -142,10 +143,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.25),
+                            color: AppColors.glassFill(context),
                             borderRadius: BorderRadius.circular(28),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.4),
+                              color: AppColors.glassBorder(context),
                               width: 1.5,
                             ),
                           ),
@@ -178,18 +179,31 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.red.withValues(alpha: 0.15),
+                                    color: Colors.red.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: Colors.red.withValues(alpha: 0.4),
                                     ),
                                   ),
-                                  child: Text(
-                                    _error!,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                    ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline_rounded,
+                                        color: Color(0xFFB3261E),
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _error!,
+                                          style: const TextStyle(
+                                            color: Color(0xFFB3261E),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -202,8 +216,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Bouton Liquid Glass — opacité renforcée
-                  GestureDetector(
+                  // Bouton principal
+                  Tappable(
                     onTap: _isLoading ? null : _submit,
                     child: Container(
                       decoration: BoxDecoration(
@@ -224,24 +238,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: double.infinity,
                             height: 58,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.35),
+                              color: AppColors.glassFill(context),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.6),
+                                color: AppColors.glassBorder(context),
                                 width: 1.5,
                               ),
                             ),
                             child: Center(
                               child: _isLoading
-                                  ? const CupertinoActivityIndicator(
-                                      color: Colors.white,
+                                  ? CupertinoActivityIndicator(
+                                      color: AppColors.textPrimary(context),
                                     )
                                   : Text(
                                       _isRegister
                                           ? 'Créer mon compte'
                                           : 'Se connecter',
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary(context),
                                         fontSize: 17,
                                         fontWeight: FontWeight.w600,
                                         letterSpacing: 0.3,
@@ -256,9 +270,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 28),
 
-                  // Toggle login/register
+                  // Bascule login / register
                   Center(
-                    child: GestureDetector(
+                    child: Tappable(
                       onTap: () => setState(() {
                         _isRegister = !_isRegister;
                         _error = null;
@@ -269,14 +283,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? 'Déjà un compte ? '
                               : 'Pas encore de compte ? ',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color: AppColors.textSecondary(context),
                             fontSize: 15,
                           ),
-                          children: const [
+                          children: [
                             TextSpan(
                               text: 'Clique ici',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary(context),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -296,20 +310,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _blurCircle(double size, Color color) {
-    return ImageFiltered(
-      imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withValues(alpha: 0.6),
-        ),
-      ),
-    );
-  }
-
   Widget _buildField({
     required TextEditingController controller,
     required String hint,
@@ -323,32 +323,31 @@ class _LoginScreenState extends State<LoginScreen> {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
+            color: AppColors.glassFill(context).withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: AppColors.glassBorder(context).withValues(alpha: 0.6),
+            ),
           ),
           child: TextField(
             controller: controller,
             obscureText: obscureText,
             keyboardType: keyboardType,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppColors.textPrimary(context),
               fontSize: 16,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.2,
             ),
+            cursorColor: AppColors.textPrimary(context),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 18,
+                color: AppColors.textTertiary(context),
+                fontSize: 15,
                 fontWeight: FontWeight.w400,
               ),
-              prefixIcon: Icon(
-                icon,
-                color: Colors.white.withValues(alpha: 0.8),
-                size: 20,
-              ),
+              prefixIcon: Icon(icon, color: AppColors.icon(context), size: 20),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -356,6 +355,20 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _blurCircle(double size, Color color) {
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: 0.6),
         ),
       ),
     );

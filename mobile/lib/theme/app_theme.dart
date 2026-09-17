@@ -22,6 +22,54 @@ class AppColors {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? const Color(0xFF253A2A) : const Color(0xFFA8C4A8);
   }
+
+  // ── Couleurs de texte adaptatives ────────────────────────
+
+  /// Texte principal — titres, contenu important
+  static Color textPrimary(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? Colors.white : const Color(0xFF1A2E20);
+  }
+
+  /// Texte secondaire — sous-titres, métadonnées
+  static Color textSecondary(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? Colors.white.withValues(alpha: 0.7)
+        : const Color(0xFF1A2E20).withValues(alpha: 0.65);
+  }
+
+  /// Texte tertiaire — labels de section, placeholders
+  static Color textTertiary(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? Colors.white.withValues(alpha: 0.5)
+        : const Color(0xFF1A2E20).withValues(alpha: 0.45);
+  }
+
+  /// Icônes
+  static Color icon(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? Colors.white.withValues(alpha: 0.8)
+        : const Color(0xFF1A2E20).withValues(alpha: 0.7);
+  }
+
+  /// Fond des cartes glass
+  static Color glassFill(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white.withValues(alpha: 0.45);
+  }
+
+  /// Bordure des cartes glass
+  static Color glassBorder(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? Colors.white.withValues(alpha: 0.2)
+        : Colors.white.withValues(alpha: 0.7);
+  }
 }
 
 // Gère le thème choisi par l'utilisateur (clair / sombre / auto) et le persiste

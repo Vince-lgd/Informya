@@ -1,10 +1,11 @@
 import 'dart:ui';
-import '../services/api_service.dart';
-import '../theme/app_theme.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../services/api_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/tappable.dart';
 
 class ArticleScreen extends StatefulWidget {
   final Map<String, dynamic> article;
@@ -17,11 +18,12 @@ class ArticleScreen extends StatefulWidget {
 
 class _ArticleScreenState extends State<ArticleScreen> {
   bool _isBookmarked = false;
+  bool _isFavoriteSource = false;
+  bool _isLoading = false;
+
   String? _aiSummary;
   bool _isSummaryLoading = false;
   String? _summaryError;
-  bool _isLoading = false;
-  bool _isFavoriteSource = false;
 
   @override
   void initState() {
@@ -30,17 +32,82 @@ class _ArticleScreenState extends State<ArticleScreen> {
     _checkIfFavoriteSource();
   }
 
+  Future<void> _checkIfBookmarked() async {
+    try {
+      final bookmarks = await ApiService.getBookmarks();
+      final articleId = widget.article['id'];
+      if (mounted) {
+        setState(() {
+          _isBookmarked = bookmarks.any((b) => b['id'] == articleId);
+        });
+      }
+    } catch (e) {
+      // Silencieux
+    }
+  }
+
   Future<void> _checkIfFavoriteSource() async {
     try {
       final sources = await ApiService.getFavoriteSources();
       final sourceName = widget.article['source_name'];
       if (mounted) {
-        setState(() {
-          _isFavoriteSource = sources.contains(sourceName);
-        });
+        setState(() => _isFavoriteSource = sources.contains(sourceName));
       }
     } catch (e) {
       // Silencieux
+    }
+  }
+
+  /// SnackBar cohérente avec le thème courant
+  void _showSnack(String message, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? Colors.white : const Color(0xFF1A2E20);
+    final contentColor = isDark ? const Color(0xFF1A2E20) : Colors.white;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: contentColor, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              message,
+              style: TextStyle(
+                color: contentColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: bgColor,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Future<void> _toggleBookmark() async {
+    setState(() => _isLoading = true);
+    try {
+      if (_isBookmarked) {
+        await ApiService.removeBookmark(widget.article['id']);
+        await HapticFeedback.lightImpact();
+        if (mounted) {
+          _showSnack('Retiré des favoris', Icons.bookmark_remove_rounded);
+        }
+      } else {
+        await ApiService.addBookmark(widget.article['id']);
+        await HapticFeedback.mediumImpact();
+        if (mounted) {
+          _showSnack('Ajouté aux favoris !', Icons.bookmark_rounded);
+        }
+      }
+      if (mounted) setState(() => _isBookmarked = !_isBookmarked);
+    } catch (e) {
+      // Silencieux
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -60,111 +127,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
     }
   }
 
-  // Vérifie si l'article est déjà en favori au chargement
-  Future<void> _checkIfBookmarked() async {
-    try {
-      final bookmarks = await ApiService.getBookmarks();
-      final articleId = widget.article['id'];
-      if (mounted) {
-        setState(() {
-          _isBookmarked = bookmarks.any((b) => b['id'] == articleId);
-        });
-      }
-    } catch (e) {
-      // Erreur silencieuse
-    }
-  }
-
-  Future<void> _toggleBookmark() async {
-    setState(() => _isLoading = true);
-    try {
-      // 🟢 1. Détecter le mode actuel
-      final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-      // 🟢 2. Calculer les couleurs dynamiques
-      final snackBgColor = isDarkMode
-          ? Colors.white.withValues(alpha: 0.95)
-          : Colors.black.withValues(alpha: 0.85);
-
-      final snackContentColor = isDarkMode ? Colors.black87 : Colors.white;
-
-      if (_isBookmarked) {
-        await ApiService.removeBookmark(widget.article['id']);
-
-        await HapticFeedback.lightImpact();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(
-                    Icons.bookmark_remove_rounded,
-                    color: snackContentColor, // 🟢 Couleur dynamique
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Retiré des favoris',
-                    style: TextStyle(
-                      color: snackContentColor,
-                    ), // 🟢 Couleur dynamique
-                  ),
-                ],
-              ),
-              backgroundColor: snackBgColor, // 🟢 Couleur dynamique
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-        }
-      } else {
-        await ApiService.addBookmark(widget.article['id']);
-
-        await HapticFeedback.mediumImpact();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(
-                    Icons.bookmark_rounded,
-                    color: snackContentColor, // 🟢 Couleur dynamique
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Ajouté aux favoris !',
-                    style: TextStyle(
-                      color: snackContentColor,
-                    ), // 🟢 Couleur dynamique
-                  ),
-                ],
-              ),
-              backgroundColor: snackBgColor, // 🟢 Couleur dynamique
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-        }
-      }
-      if (mounted) {
-        setState(() => _isBookmarked = !_isBookmarked);
-      }
-    } catch (e) {
-      // Erreur silencieuse
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
   Future<void> _generateSummary() async {
     setState(() {
       _isSummaryLoading = true;
@@ -172,12 +134,10 @@ class _ArticleScreenState extends State<ArticleScreen> {
     });
     try {
       final result = await ApiService.getArticleSummary(widget.article['id']);
-      if (mounted) {
-        setState(() => _aiSummary = result['summary']);
-      }
+      if (mounted) setState(() => _aiSummary = result['summary']);
     } catch (e) {
       if (mounted) {
-        setState(() => _summaryError = 'Résumé indisponoible pour le moment.');
+        setState(() => _summaryError = 'Résumé indisponible pour le moment');
       }
     } finally {
       if (mounted) setState(() => _isSummaryLoading = false);
@@ -188,20 +148,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
     final url = widget.article['url'];
     if (url != null && await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    }
-  }
-
-  String _formatDate(String? dateStr) {
-    if (dateStr == null) return '';
-    try {
-      final date = DateTime.parse(dateStr);
-      final now = DateTime.now();
-      final diff = now.difference(date);
-      if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
-      if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
-      return 'Il y a ${diff.inDays}j';
-    } catch (_) {
-      return '';
     }
   }
 
@@ -260,11 +206,26 @@ class _ArticleScreenState extends State<ArticleScreen> {
     }
   }
 
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+      if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
+      if (diff.inHours < 24) return 'Il y a ${diff.inHours}h';
+      return 'Il y a ${diff.inDays}j';
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final article = widget.article;
     final category = article['category'];
     final color = _categoryColor(category);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -273,75 +234,43 @@ class _ArticleScreenState extends State<ArticleScreen> {
           Positioned(
             top: -60,
             right: -60,
-            child: _blurCircle(200, const Color(0xFFB8CDB8)),
+            child: _blurCircle(200, AppColors.circle1(context)),
           ),
           Positioned(
             bottom: 100,
             left: -80,
-            child: _blurCircle(180, const Color(0xFF7A9E8A)),
+            child: _blurCircle(180, AppColors.circle2(context)),
           ),
 
           SafeArea(
             child: Column(
               children: [
+                // Header
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      GestureDetector(
+                      Tappable(
                         onTap: () => Navigator.pop(context),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.arrow_back_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
+                        child: _glassButton(
+                          child: Icon(
+                            Icons.arrow_back_rounded,
+                            color: AppColors.icon(context),
+                            size: 20,
                           ),
                         ),
                       ),
-
-                      GestureDetector(
+                      Tappable(
                         onTap: _isLoading ? null : _toggleBookmark,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: _isBookmarked
-                                    ? Colors.white.withValues(alpha: 0.4)
-                                    : Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _isBookmarked
-                                      ? Colors.white.withValues(alpha: 0.6)
-                                      : Colors.white.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Icon(
-                                _isBookmarked
-                                    ? Icons.bookmark_rounded
-                                    : Icons.bookmark_outline_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
+                        child: _glassButton(
+                          highlighted: _isBookmarked,
+                          child: Icon(
+                            _isBookmarked
+                                ? Icons.bookmark_rounded
+                                : Icons.bookmark_outline_rounded,
+                            color: AppColors.icon(context),
+                            size: 20,
                           ),
                         ),
                       ),
@@ -357,10 +286,10 @@ class _ArticleScreenState extends State<ArticleScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Badge source + catégorie
+                        // Source + catégorie
                         Row(
                           children: [
-                            GestureDetector(
+                            Tappable(
                               onTap: _toggleFavoriteSource,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
@@ -368,10 +297,14 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.15),
+                                  color: color.withValues(
+                                    alpha: isDark ? 0.3 : 0.18,
+                                  ),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: color.withValues(alpha: 0.4),
+                                    color: color.withValues(
+                                      alpha: isDark ? 0.6 : 0.5,
+                                    ),
                                   ),
                                 ),
                                 child: Row(
@@ -383,16 +316,18 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                           : Icons.star_outline_rounded,
                                       color: _isFavoriteSource
                                           ? Colors.amber
-                                          : Colors.white.withValues(alpha: 0.4),
-                                      size: 20,
+                                          : AppColors.textTertiary(context),
+                                      size: 14,
                                     ),
-                                    const SizedBox(width: 5),
+                                    const SizedBox(width: 4),
                                     Text(
                                       article['source_name'] ?? '',
                                       style: TextStyle(
-                                        color: color,
+                                        color: isDark
+                                            ? color.withValues(alpha: 0.95)
+                                            : color,
                                         fontSize: 13,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ],
@@ -403,8 +338,8 @@ class _ArticleScreenState extends State<ArticleScreen> {
                             Text(
                               '${_categoryEmoji(category)} $category',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 14,
+                                color: AppColors.textSecondary(context),
+                                fontSize: 13,
                               ),
                             ),
                           ],
@@ -412,6 +347,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
                         const SizedBox(height: 10),
 
+                        // Date + temps de lecture + biais
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -420,7 +356,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                 Text(
                                   _formatDate(article['published_at']),
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.8),
+                                    color: AppColors.textTertiary(context),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -428,39 +364,38 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                   Text(
                                     '  ·  ',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.8,
-                                      ),
+                                      color: AppColors.textTertiary(context),
                                       fontSize: 13,
                                     ),
                                   ),
                                   Text(
                                     '${article['reading_time']} min de lecture',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.8,
-                                      ),
+                                      color: AppColors.textTertiary(context),
                                       fontSize: 13,
                                     ),
                                   ),
                                 ],
                               ],
                             ),
-                            if (article['source_bias'] != null)
+                            if (article['source_bias'] != null &&
+                                _biasLabel(article['source_bias']).isNotEmpty)
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.08)
+                                      : Colors.black.withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
                                   _biasLabel(article['source_bias']),
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    fontSize: 13,
+                                    color: AppColors.textTertiary(context),
+                                    fontSize: 11,
                                   ),
                                 ),
                               ),
@@ -469,10 +404,11 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
                         const SizedBox(height: 20),
 
+                        // Titre
                         Text(
                           article['title'] ?? '',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppColors.textPrimary(context),
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
                             height: 1.3,
@@ -482,47 +418,19 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
                         const SizedBox(height: 20),
 
-                        if (article['content'] != null) ...[
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                child: Text(
-                                  article['content'],
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 15,
-                                    height: 1.6,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-
                         // Résumé IA
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                           child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                             child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(16),
+                                color: AppColors.glassFill(context),
+                                borderRadius: BorderRadius.circular(18),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.25),
+                                  color: AppColors.glassBorder(context),
                                 ),
                               ),
                               child: Column(
@@ -532,16 +440,14 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                     children: [
                                       Icon(
                                         Icons.auto_awesome_rounded,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.9,
-                                        ),
+                                        color: AppColors.icon(context),
                                         size: 18,
                                       ),
                                       const SizedBox(width: 8),
-                                      const Text(
+                                      Text(
                                         'Résumé IA',
                                         style: TextStyle(
-                                          color: Colors.white,
+                                          color: AppColors.textPrimary(context),
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -553,41 +459,71 @@ class _ArticleScreenState extends State<ArticleScreen> {
                                     Text(
                                       _aiSummary!,
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.9,
-                                        ),
+                                        color: AppColors.textPrimary(context),
                                         fontSize: 14,
                                         height: 1.6,
                                       ),
                                     )
                                   else if (_isSummaryLoading)
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
                                         vertical: 8,
                                       ),
                                       child: SizedBox(
                                         height: 18,
                                         width: 18,
                                         child: CircularProgressIndicator(
-                                          color: Colors.white,
+                                          color: AppColors.textPrimary(context),
                                           strokeWidth: 2,
                                         ),
                                       ),
                                     )
                                   else
-                                    GestureDetector(
+                                    Tappable(
                                       onTap: _generateSummary,
-                                      child: Text(
-                                        _summaryError ??
-                                            'Toucher pour générer un résumé',
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.6,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.glassFill(
+                                            context,
+                                          ).withValues(alpha: 0.6),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
                                           ),
-                                          fontSize: 13,
-                                          decoration: _summaryError == null
-                                              ? TextDecoration.underline
-                                              : null,
+                                          border: Border.all(
+                                            color: AppColors.glassBorder(
+                                              context,
+                                            ).withValues(alpha: 0.5),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              _summaryError != null
+                                                  ? Icons.error_outline_rounded
+                                                  : Icons.touch_app_rounded,
+                                              color: AppColors.textSecondary(
+                                                context,
+                                              ),
+                                              size: 15,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              _summaryError ??
+                                                  'Générer un résumé',
+                                              style: TextStyle(
+                                                color: AppColors.textSecondary(
+                                                  context,
+                                                ),
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -596,37 +532,39 @@ class _ArticleScreenState extends State<ArticleScreen> {
                             ),
                           ),
                         ),
+
                         const SizedBox(height: 20),
 
-                        GestureDetector(
+                        // Lire l'article complet
+                        Tappable(
                           onTap: _openUrl,
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(18),
                             child: BackdropFilter(
                               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                               child: Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.25),
-                                  borderRadius: BorderRadius.circular(16),
+                                  color: AppColors.glassFill(context),
+                                  borderRadius: BorderRadius.circular(18),
                                   border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.4),
+                                    color: AppColors.glassBorder(context),
                                   ),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
                                       Icons.open_in_new_rounded,
-                                      color: Colors.white,
+                                      color: AppColors.textPrimary(context),
                                       size: 18,
                                     ),
-                                    SizedBox(width: 8),
+                                    const SizedBox(width: 8),
                                     Text(
                                       'Lire l\'article complet',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.textPrimary(context),
                                         fontSize: 15,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -647,6 +585,27 @@ class _ArticleScreenState extends State<ArticleScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _glassButton({required Widget child, bool highlighted = false}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: highlighted
+                ? AppColors.glassFill(context)
+                : AppColors.glassFill(context).withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.glassBorder(context)),
+          ),
+          child: child,
+        ),
       ),
     );
   }

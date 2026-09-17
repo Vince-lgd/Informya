@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import 'article_screen.dart';
 import '../theme/app_theme.dart';
+import '../widgets/tappable.dart';
 
 import 'package:flutter/material.dart';
 
@@ -26,10 +27,20 @@ class _FeedScreenState extends State<FeedScreen> {
 
   List<String> _favoriteSources = [];
 
+  final List<String> _categories = [
+    'Tout',
+    '⭐ Mes sources',
+    'Politique',
+    'Sport',
+    'Bourse',
+    'Tech',
+    'Art',
+    'Science',
+  ];
+
   @override
   void initState() {
     super.initState();
-
     _isLoading = false;
     _loadFeed(refresh: true);
     _loadFavoriteSources();
@@ -44,23 +55,11 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
-  final List<String> _categories = [
-    'Tout',
-    '⭐ Mes sources',
-    'Politique',
-    'Sport',
-    'Bourse',
-    'Tech',
-    'Art',
-    'Science',
-  ];
-
   Future<void> _loadFeed({bool refresh = false}) async {
     if (_isLoading) return;
 
     setState(() {
       _isLoading = true;
-
       if (refresh) {
         _currentPage = 1;
         _articles = [];
@@ -91,25 +90,24 @@ class _FeedScreenState extends State<FeedScreen> {
         } else {
           _articles.addAll(newArticles);
         }
-
         _hasMore = result['has_more'] ?? false;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
+
+  // ── Bottom sheet filtres ─────────────────────────────────
 
   void _showFilters() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) {
+      builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (sheetContext, setModalState) {
             return ClipRRect(
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(24),
@@ -120,13 +118,13 @@ class _FeedScreenState extends State<FeedScreen> {
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: AppColors.background(
-                      context,
-                    ).withValues(alpha: 0.95),
+                      sheetContext,
+                    ).withValues(alpha: 0.97),
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(24),
                     ),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: AppColors.glassBorder(sheetContext),
                     ),
                   ),
                   child: Column(
@@ -136,15 +134,15 @@ class _FeedScreenState extends State<FeedScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Filtres',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textPrimary(sheetContext),
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          GestureDetector(
+                          Tappable(
                             onTap: () {
                               setState(() {
                                 _selectedContentType = null;
@@ -152,12 +150,12 @@ class _FeedScreenState extends State<FeedScreen> {
                                 _selectedSourceBias = null;
                               });
                               _loadFeed(refresh: true);
-                              Navigator.pop(context);
+                              Navigator.pop(sheetContext);
                             },
                             child: Text(
                               'Réinitialiser',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.6),
+                                color: AppColors.textSecondary(sheetContext),
                                 fontSize: 14,
                               ),
                             ),
@@ -167,14 +165,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
                       const SizedBox(height: 24),
 
-                      Text(
-                        'Type d\'article',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      _filterLabel('Type d\'article', sheetContext),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
@@ -212,14 +203,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
                       const SizedBox(height: 20),
 
-                      Text(
-                        'Temps de lecture',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      _filterLabel('Temps de lecture', sheetContext),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
@@ -261,14 +245,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
                       const SizedBox(height: 20),
 
-                      Text(
-                        'Biais de la source',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      _filterLabel('Biais de la source', sheetContext),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
@@ -315,11 +292,11 @@ class _FeedScreenState extends State<FeedScreen> {
 
                       const SizedBox(height: 28),
 
-                      GestureDetector(
+                      Tappable(
                         onTap: () {
                           setState(() {});
                           _loadFeed(refresh: true);
-                          Navigator.pop(context);
+                          Navigator.pop(sheetContext);
                         },
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
@@ -329,17 +306,17 @@ class _FeedScreenState extends State<FeedScreen> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.3),
+                                color: AppColors.glassFill(sheetContext),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.5),
+                                  color: AppColors.glassBorder(sheetContext),
                                 ),
                               ),
-                              child: const Center(
+                              child: Center(
                                 child: Text(
                                   'Appliquer les filtres',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: AppColors.textPrimary(sheetContext),
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -361,6 +338,17 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
+  Widget _filterLabel(String text, BuildContext ctx) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: AppColors.textSecondary(ctx),
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
   Widget _filterChip(
     String label,
     String? value,
@@ -368,23 +356,27 @@ class _FeedScreenState extends State<FeedScreen> {
     Function(String?) onTap,
   ) {
     final isSelected = selected == value;
-    return GestureDetector(
+    return Tappable(
       onTap: () => onTap(value),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withValues(alpha: 0.35)
-              : Colors.white.withValues(alpha: 0.12),
+              ? AppColors.glassFill(context)
+              : AppColors.glassFill(context).withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.white.withValues(alpha: isSelected ? 0.6 : 0.2),
+            color: isSelected
+                ? AppColors.glassBorder(context)
+                : AppColors.glassBorder(context).withValues(alpha: 0.4),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: isSelected ? 1 : 0.7),
+            color: isSelected
+                ? AppColors.textPrimary(context)
+                : AppColors.textSecondary(context),
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
@@ -400,23 +392,27 @@ class _FeedScreenState extends State<FeedScreen> {
     Function(int?) onTap,
   ) {
     final isSelected = selected == value;
-    return GestureDetector(
+    return Tappable(
       onTap: () => onTap(value),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withValues(alpha: 0.35)
-              : Colors.white.withValues(alpha: 0.12),
+              ? AppColors.glassFill(context)
+              : AppColors.glassFill(context).withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.white.withValues(alpha: isSelected ? 0.6 : 0.2),
+            color: isSelected
+                ? AppColors.glassBorder(context)
+                : AppColors.glassBorder(context).withValues(alpha: 0.4),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: isSelected ? 1 : 0.7),
+            color: isSelected
+                ? AppColors.textPrimary(context)
+                : AppColors.textSecondary(context),
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
@@ -424,6 +420,8 @@ class _FeedScreenState extends State<FeedScreen> {
       ),
     );
   }
+
+  // ── Build ────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -434,33 +432,34 @@ class _FeedScreenState extends State<FeedScreen> {
           Positioned(
             top: -60,
             right: -60,
-            child: _blurCircle(200, const Color(0xFFB8CDB8)),
+            child: _blurCircle(200, AppColors.circle1(context)),
           ),
           Positioned(
             bottom: 100,
             left: -80,
-            child: _blurCircle(180, const Color(0xFF7A9E8A)),
+            child: _blurCircle(180, AppColors.circle2(context)),
           ),
 
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Informya',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary(context),
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.5,
                         ),
                       ),
-                      GestureDetector(
+                      Tappable(
                         onTap: _showFilters,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
@@ -473,16 +472,18 @@ class _FeedScreenState extends State<FeedScreen> {
                                     (_selectedContentType != null ||
                                         _selectedMaxReadingTime != null ||
                                         _selectedSourceBias != null)
-                                    ? Colors.white.withValues(alpha: 0.4)
-                                    : Colors.white.withValues(alpha: 0.2),
+                                    ? AppColors.glassFill(context)
+                                    : AppColors.glassFill(
+                                        context,
+                                      ).withValues(alpha: 0.6),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.3),
+                                  color: AppColors.glassBorder(context),
                                 ),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.tune_rounded,
-                                color: Colors.white,
+                                color: AppColors.icon(context),
                                 size: 20,
                               ),
                             ),
@@ -495,6 +496,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
                 const SizedBox(height: 20),
 
+                // Chips catégories
                 SizedBox(
                   height: 38,
                   child: ListView.builder(
@@ -505,7 +507,7 @@ class _FeedScreenState extends State<FeedScreen> {
                       final cat = _categories[index];
                       final isSelected = (_selectedCategory ?? 'Tout') == cat;
 
-                      return GestureDetector(
+                      return Tappable(
                         onTap: () {
                           setState(() => _selectedCategory = cat);
                           _loadFeed(refresh: true);
@@ -518,21 +520,25 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? Colors.white.withValues(alpha: 0.35)
-                                : Colors.white.withValues(alpha: 0.15),
+                                ? AppColors.glassFill(context)
+                                : AppColors.glassFill(
+                                    context,
+                                  ).withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: Colors.white.withValues(
-                                alpha: isSelected ? 0.6 : 0.2,
-                              ),
+                              color: isSelected
+                                  ? AppColors.glassBorder(context)
+                                  : AppColors.glassBorder(
+                                      context,
+                                    ).withValues(alpha: 0.4),
                             ),
                           ),
                           child: Text(
                             cat,
                             style: TextStyle(
-                              color: Colors.white.withValues(
-                                alpha: isSelected ? 1 : 0.7,
-                              ),
+                              color: isSelected
+                                  ? AppColors.textPrimary(context)
+                                  : AppColors.textSecondary(context),
                               fontSize: 13,
                               fontWeight: isSelected
                                   ? FontWeight.w600
@@ -547,10 +553,13 @@ class _FeedScreenState extends State<FeedScreen> {
 
                 const SizedBox(height: 20),
 
+                // Liste
                 Expanded(
                   child: _isLoading && _articles.isEmpty
-                      ? const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.textPrimary(context),
+                          ),
                         )
                       : !_isLoading && _articles.isEmpty
                       ? Center(
@@ -561,7 +570,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                 _selectedCategory == '⭐ Mes sources'
                                     ? Icons.star_outline_rounded
                                     : Icons.newspaper_outlined,
-                                color: Colors.white.withValues(alpha: 0.4),
+                                color: AppColors.textTertiary(context),
                                 size: 64,
                               ),
                               const SizedBox(height: 16),
@@ -570,7 +579,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                     ? 'Aucune source favorite'
                                     : 'Aucun article disponible',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.6),
+                                  color: AppColors.textSecondary(context),
                                   fontSize: 20,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -580,7 +589,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                 Text(
                                   'Ajoute des sources via l\'étoile ⭐ sur les cartes',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.4),
+                                    color: AppColors.textTertiary(context),
                                     fontSize: 14,
                                   ),
                                   textAlign: TextAlign.center,
@@ -590,7 +599,7 @@ class _FeedScreenState extends State<FeedScreen> {
                         )
                       : RefreshIndicator(
                           onRefresh: () => _loadFeed(refresh: true),
-                          color: Colors.white,
+                          color: AppColors.textPrimary(context),
                           backgroundColor: AppColors.background(context),
                           child: ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -606,17 +615,19 @@ class _FeedScreenState extends State<FeedScreen> {
                                   });
                                 }
                                 return _isLoading
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(20),
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(20),
                                         child: Center(
                                           child: CircularProgressIndicator(
-                                            color: Colors.white,
+                                            color: AppColors.textPrimary(
+                                              context,
+                                            ),
                                           ),
                                         ),
                                       )
                                     : const SizedBox.shrink();
                               }
-                              return GestureDetector(
+                              return Tappable(
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -661,6 +672,8 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 }
+
+// ── Carte article ──────────────────────────────────────────
 
 class _ArticleCard extends StatelessWidget {
   final Map<String, dynamic> article;
@@ -772,12 +785,10 @@ class _ArticleCard extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.white.withValues(alpha: 0.25),
+              color: AppColors.glassFill(context),
               borderRadius: BorderRadius.circular(22),
               border: Border.all(
-                color: Colors.white.withValues(alpha: isDark ? 0.2 : 0.6),
+                color: AppColors.glassBorder(context),
                 width: 1,
               ),
             ),
@@ -789,7 +800,7 @@ class _ArticleCard extends StatelessWidget {
                   // Source + catégorie
                   Row(
                     children: [
-                      GestureDetector(
+                      Tappable(
                         onTap: () async {
                           final sourceName = article['source_name'];
                           if (sourceName == null) return;
@@ -824,9 +835,7 @@ class _ArticleCard extends StatelessWidget {
                                     : Icons.star_outline_rounded,
                                 color: isFavoriteSource
                                     ? Colors.amber
-                                    : Colors.white.withValues(
-                                        alpha: isDark ? 0.7 : 0.6,
-                                      ),
+                                    : AppColors.textTertiary(context),
                                 size: 13,
                               ),
                               const SizedBox(width: 4),
@@ -850,9 +859,7 @@ class _ArticleCard extends StatelessWidget {
                       Text(
                         '${_categoryEmoji(category)} $category',
                         style: TextStyle(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.6)
-                              : Colors.black.withValues(alpha: 0.45),
+                          color: AppColors.textSecondary(context),
                           fontSize: 12,
                         ),
                       ),
@@ -865,9 +872,7 @@ class _ArticleCard extends StatelessWidget {
                   Text(
                     article['title'] ?? '',
                     style: TextStyle(
-                      color: isDark
-                          ? Colors.white
-                          : Colors.black.withValues(alpha: 0.85),
+                      color: AppColors.textPrimary(context),
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       height: 1.4,
@@ -888,9 +893,7 @@ class _ArticleCard extends StatelessWidget {
                           Text(
                             _formatDate(article['published_at']),
                             style: TextStyle(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.45)
-                                  : Colors.black.withValues(alpha: 0.35),
+                              color: AppColors.textTertiary(context),
                               fontSize: 12,
                             ),
                           ),
@@ -898,18 +901,14 @@ class _ArticleCard extends StatelessWidget {
                             Text(
                               '  ·  ',
                               style: TextStyle(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.3)
-                                    : Colors.black.withValues(alpha: 0.25),
+                                color: AppColors.textTertiary(context),
                                 fontSize: 12,
                               ),
                             ),
                             Text(
                               '${article['reading_time']} min',
                               style: TextStyle(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.45)
-                                    : Colors.black.withValues(alpha: 0.35),
+                                color: AppColors.textTertiary(context),
                                 fontSize: 12,
                               ),
                             ),
@@ -932,9 +931,7 @@ class _ArticleCard extends StatelessWidget {
                           child: Text(
                             _biasLabel(article['source_bias']),
                             style: TextStyle(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.5)
-                                  : Colors.black.withValues(alpha: 0.4),
+                              color: AppColors.textTertiary(context),
                               fontSize: 11,
                             ),
                           ),

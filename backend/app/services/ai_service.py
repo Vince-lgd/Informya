@@ -115,14 +115,26 @@ def _call_gemini(prompt: str) -> ArticleSummary:
         raise AISchemaValidationError(f"JSON malformé: {e}") from e
 
 
-def generate_summary(title: str, content: str | None, url: str, style: str) -> str:
+def generate_summary(
+    title: str,
+    content: str | None,
+    url: str,
+    style: str,
+) -> tuple[str, int | None]:
+    """
+    Retourne (résumé, nombre de mots du texte source).
+    Le word_count vaut None si on n'a pas pu récupérer le texte complet.
+    """
     instruction = STYLE_PROMPTS.get(style, STYLE_PROMPTS["bullet"])
 
     cleaned_content = clean_html(content or "")
     full_text = fetch_full_text(url)
 
+    # On ne compte les mots que si l'extraction complète a réussi
+    word_count = None
     if full_text and len(full_text.strip()) > 300:
         source_text = full_text
+        word_count = len(full_text.split())
     else:
         source_text = cleaned_content
 
@@ -146,4 +158,4 @@ Contraintes:
 
     summary = _call_gemini(prompt)
 
-    return summary.to_display_text()
+    return summary.to_display_text(), word_count
