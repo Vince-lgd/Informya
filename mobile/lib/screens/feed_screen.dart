@@ -1,12 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
 import 'article_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/tappable.dart';
-
-import 'package:flutter/material.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -96,6 +96,20 @@ class _FeedScreenState extends State<FeedScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _shareArticle(Map<String, dynamic> article) async {
+    final url = article['url'] ?? '';
+    if (url.isEmpty) return;
+
+    await HapticFeedback.mediumImpact();
+
+    final text =
+        '${article['title']}\n\n${article['source_name']}\n$url\n\nPartagé via Informya';
+
+    await SharePlus.instance.share(
+      ShareParams(text: text, subject: article['title']),
+    );
   }
 
   // ── Styles partagés des chips ────────────────────────────
@@ -633,23 +647,27 @@ class _FeedScreenState extends State<FeedScreen> {
                                       )
                                     : const SizedBox.shrink();
                               }
-                              return Tappable(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ArticleScreen(
-                                        article: _articles[index],
+                              return GestureDetector(
+                                onLongPress: () =>
+                                    _shareArticle(_articles[index]),
+                                child: Tappable(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ArticleScreen(
+                                          article: _articles[index],
+                                        ),
                                       ),
+                                    );
+                                  },
+                                  child: _ArticleCard(
+                                    article: _articles[index],
+                                    isFavoriteSource: _favoriteSources.contains(
+                                      _articles[index]['source_name'],
                                     ),
-                                  );
-                                },
-                                child: _ArticleCard(
-                                  article: _articles[index],
-                                  isFavoriteSource: _favoriteSources.contains(
-                                    _articles[index]['source_name'],
+                                    onFavoriteToggled: _loadFavoriteSources,
                                   ),
-                                  onFavoriteToggled: _loadFavoriteSources,
                                 ),
                               );
                             },

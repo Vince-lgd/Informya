@@ -98,6 +98,25 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     }
   }
 
+  String _categoryEmoji(String? category) {
+    switch (category) {
+      case 'politique':
+        return '🏛️';
+      case 'sport':
+        return '⚽';
+      case 'bourse':
+        return '📈';
+      case 'tech':
+        return '💻';
+      case 'art':
+        return '🎨';
+      case 'science':
+        return '🔬';
+      default:
+        return '📰';
+    }
+  }
+
   String _formatDate(String? dateStr) {
     if (dateStr == null) return '';
     try {
@@ -168,7 +187,8 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                             itemCount: _bookmarks.length,
                             itemBuilder: (context, index) {
                               final article = _bookmarks[index];
-                              final color = _categoryColor(article['category']);
+                              final category = article['category'];
+                              final color = _categoryColor(category);
                               final sourceName = article['source_name'];
                               final isFav = _favoriteSources.contains(
                                 sourceName,
@@ -230,7 +250,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              // Source + suppression
+                                              // Source + catégorie + suppression
                                               Row(
                                                 children: [
                                                   Tappable(
@@ -238,6 +258,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                                                         _toggleFavoriteSource(
                                                           sourceName,
                                                         ),
+                                                    scale: 0.94,
                                                     child: Container(
                                                       padding:
                                                           const EdgeInsets.symmetric(
@@ -302,12 +323,28 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                                                       ),
                                                     ),
                                                   ),
+
+                                                  const SizedBox(width: 8),
+
+                                                  Text(
+                                                    '${_categoryEmoji(category)} ${category ?? ''}',
+                                                    style: TextStyle(
+                                                      color:
+                                                          AppColors.textSecondary(
+                                                            context,
+                                                          ),
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+
                                                   const Spacer(),
+
                                                   Tappable(
                                                     onTap: () =>
                                                         _removeBookmark(
                                                           article['id'],
                                                         ),
+                                                    scale: 0.9,
                                                     child: Icon(
                                                       Icons
                                                           .bookmark_remove_rounded,
@@ -340,16 +377,45 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
 
                                               const SizedBox(height: 10),
 
-                                              Text(
-                                                _formatDate(
-                                                  article['published_at'],
-                                                ),
-                                                style: TextStyle(
-                                                  color: AppColors.textTertiary(
-                                                    context,
+                                              // Date + temps de lecture
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    _formatDate(
+                                                      article['published_at'],
+                                                    ),
+                                                    style: TextStyle(
+                                                      color:
+                                                          AppColors.textTertiary(
+                                                            context,
+                                                          ),
+                                                      fontSize: 12,
+                                                    ),
                                                   ),
-                                                  fontSize: 12,
-                                                ),
+                                                  if (article['reading_time'] !=
+                                                      null) ...[
+                                                    Text(
+                                                      '  ·  ',
+                                                      style: TextStyle(
+                                                        color:
+                                                            AppColors.textTertiary(
+                                                              context,
+                                                            ),
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      '${article['reading_time']} min',
+                                                      style: TextStyle(
+                                                        color:
+                                                            AppColors.textTertiary(
+                                                              context,
+                                                            ),
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
                                               ),
                                             ],
                                           ),

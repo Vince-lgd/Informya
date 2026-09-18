@@ -1,7 +1,9 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
@@ -151,6 +153,22 @@ class _ArticleScreenState extends State<ArticleScreen> {
     }
   }
 
+  Future<void> _shareArticle() async {
+    final article = widget.article;
+    final title = article['title'] ?? '';
+    final url = article['url'] ?? '';
+    final source = article['source_name'] ?? '';
+
+    if (url.isEmpty) return;
+
+    await HapticFeedback.lightImpact();
+
+    // Texte partagé : titre, source, lien, puis mention de l'app
+    final text = '$title\n\n$source\n$url\n\nPartagé via Informya';
+
+    await SharePlus.instance.share(ShareParams(text: text, subject: title));
+  }
+
   Color _categoryColor(String? category) {
     switch (category) {
       case 'politique':
@@ -246,6 +264,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
             child: Column(
               children: [
                 // Header
+                // Header
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Row(
@@ -261,18 +280,33 @@ class _ArticleScreenState extends State<ArticleScreen> {
                           ),
                         ),
                       ),
-                      Tappable(
-                        onTap: _isLoading ? null : _toggleBookmark,
-                        child: _glassButton(
-                          highlighted: _isBookmarked,
-                          child: Icon(
-                            _isBookmarked
-                                ? Icons.bookmark_rounded
-                                : Icons.bookmark_outline_rounded,
-                            color: AppColors.icon(context),
-                            size: 20,
+                      Row(
+                        children: [
+                          Tappable(
+                            onTap: _shareArticle,
+                            child: _glassButton(
+                              child: Icon(
+                                Icons.ios_share_rounded,
+                                color: AppColors.icon(context),
+                                size: 20,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Tappable(
+                            onTap: _isLoading ? null : _toggleBookmark,
+                            child: _glassButton(
+                              highlighted: _isBookmarked,
+                              child: Icon(
+                                _isBookmarked
+                                    ? Icons.bookmark_rounded
+                                    : Icons.bookmark_outline_rounded,
+                                color: AppColors.icon(context),
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
