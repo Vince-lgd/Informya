@@ -6,7 +6,7 @@
 
 ## Overview
 
-Informya is an iOS and Android mobile application that aggregates news from around the world — politics, sports, finance, art and culture — and personalizes it based on each user's interests.
+Informya is an iOS and Android mobile application that aggregates news from around the world — politics, sports, finance, tech, art and science — and personalizes it based on each user's interests.
 
 The goal is simple: stay informed daily in a smart way, without bias, without duplicates, and without getting lost in an endless chronological feed.
 
@@ -15,50 +15,54 @@ The goal is simple: stay informed daily in a smart way, without bias, without du
 ## Features
 
 ### Personalized Feed
-- Relevance scoring per user profile
-- Smart sorting based on reading history
-- Never see the same article twice
-- Categories: politics, sports, finance, art, culture, tech
 
-### Anti-Bias Algorithm
-- Sources labeled by political lean (left / center / right)
-- Forced balanced mix per topic
-- Subtle bias indicator on each source
-- Geographic diversity (FR, UK, US, etc.)
+- Never see the same article twice (read history tracking)
+- Favorite sources with a dedicated tab
+- Multi-criteria filtering: category, content type, reading time, source bias
+- Real reading time computed from full article text
+- Infinite scroll with pagination
 
-### Lightweight AI (Claude API)
-- 2-line teaser per article to help you decide whether to read it
-- "Explain" button for complex terms inside articles
-- "Compare sources" button on the same topic
-- Original articles are always preserved — AI is a reading assistant, never a writer
+### Anti-Bias Approach
+
+- Sources labeled by political lean (left / center-left / center / center-right / right)
+- Bias indicator visible on every article card
+- Geographic and editorial diversity across 30 RSS sources (FR + international)
+
+### AI Summaries (Gemini)
+
+- On-demand article summaries — never generated upfront
+- Three reading styles: bullet points, journalistic, simplified
+- Structured output validated by a Pydantic schema — malformed responses never reach the database
+- Two-level cache (Redis L1 / PostgreSQL L2) to minimize API calls
+- Original articles always preserved — AI assists reading, never replaces it
 
 ### Bookmarks & Sharing
-- Bookmark directly from the article card
-- Optional personal note on each bookmark
-- Internal sharing between Informya users
-- External sharing via native iOS/Android share sheet (WhatsApp, Mail, SMS, etc.)
 
-### Multi-User
-- Invite system via link (family, friends)
-- Independent profile per user
-- Customizable reading style (bullet points, journalistic, simplified)
-- Shared articles visible in a dedicated screen
+- Bookmark from the article screen
+- Native share sheet (WhatsApp, Mail, SMS) from article view or long-press on a card
+- Dedicated bookmarks screen
+
+### Personalization
+
+- Light / dark / system theme
+- Customizable AI reading style
+- Invite code to share with family and friends
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Mobile | React Native + TypeScript (Expo) |
-| Backend | FastAPI — Python |
-| Scraper | Rust (phase 2) |
-| Database | PostgreSQL |
-| Cache | Redis |
-| AI | Claude API (Anthropic) |
-| Infrastructure | Docker + docker-compose |
-| Admin Dashboard | Vue.js (phase 3) |
-| Deployment | Railway (backend) + Vercel (dashboard) |
+| Layer          | Technology                                  |
+| -------------- | ------------------------------------------- |
+| Mobile         | Flutter / Dart                              |
+| Backend        | FastAPI — Python 3.13                       |
+| Database       | PostgreSQL 17 + Alembic migrations          |
+| Cache          | Redis 8                                     |
+| AI             | Gemini API (Google) with structured outputs |
+| Scraping       | feedparser + trafilatura                    |
+| Testing        | pytest + pytest-asyncio (33 tests)          |
+| Infrastructure | Docker + docker-compose                     |
+| Deployment     | Railway (planned)                           |
 
 ---
 
@@ -66,86 +70,171 @@ The goal is simple: stay informed daily in a smart way, without bias, without du
 
 ```
 Informya/
-├── backend/                  # FastAPI — Python
+├── backend/                     # FastAPI — Python
 │   ├── app/
-│   │   ├── routers/          # auth, feed, articles, users
-│   │   ├── models/           # SQLAlchemy — User, Article, Bookmark, SharedArticle
-│   │   ├── schemas/          # Pydantic — data validation
-│   │   ├── services/         # scraper, scoring, AI
-│   │   └── core/             # config, database, security, dependencies
-│   ├── Dockerfile
+│   │   ├── routers/             # auth, feed, articles, users
+│   │   ├── models/              # SQLAlchemy — User, Article, Bookmark, UserSource
+│   │   ├── schemas/             # Pydantic — request/response + AI output validation
+│   │   ├── services/            # scraper, ai_service, cache_service
+│   │   ├── core/                # config, database, security, exceptions, limiter
+│   │   └── utils/               # text helpers
+│   ├── alembic/                 # database migrations
+│   ├── benchmark/               # LLM model comparison scripts
+│   ├── tests/                   # pytest suite
 │   └── requirements.txt
 │
-├── mobile/                   # React Native + TypeScript
-│   └── src/
-│       ├── screens/          # Feed, Article, Profile, Bookmarks
-│       ├── components/       # Cards, AI overlay, Share sheet
-│       ├── store/            # State management
-│       └── api/              # FastAPI calls
+├── mobile/                      # Flutter
+│   └── lib/
+│       ├── screens/             # feed, article, bookmarks, profile, login
+│       ├── services/            # API client
+│       ├── theme/               # adaptive color system
+│       └── widgets/             # reusable components
 │
-├── scraper/                  # Rust — phase 2
-├── dashboard/                # Vue.js — phase 3
 ├── docker-compose.yml
 └── .env.example
 ```
 
----
-
 ## Database
 
-5 PostgreSQL tables:
+6 PostgreSQL tables:
 
-- `users` — profiles, interest scores, invite codes, reading style
-- `articles` — original content, SHA-256 hash (deduplication), bias label, AI teaser
-- `read_history` — reading history + duration → feeds the personalization scoring
-- `bookmarks` — personal bookmarks with optional note
-- `shared_articles` — internal sharing between users with optional message
+- `users` — profiles, invite codes, reading style preference
+- `articles` — content, SHA-256 hash (deduplication), bias label, cached AI summaries per style, reading time, content type
+- `read_history` — reading history, excludes already-read articles from the feed
+- `bookmarks` — personal bookmarks
+- `user_sources` — favorite sources per user
+- `shared_articles` — internal sharing (planned)
 
 ---
 
-## Getting Started
+## AI Integration
 
-### Prerequisites
-- Docker Desktop
-- Node.js 20+ (nvm recommended)
-- Expo Go on iPhone/Android (for mobile testing)
+### Resilience Strategy
 
-### Installation
+The Gemini integration distinguishes error types and adapts its retry and cache behaviour accordingly:
 
-```bash
-# 1. Clone the repo
-git clone https://github.com/Vince-lgd/Informya.git
-cd Informya
+| Situation                         | Retry                         | Cache TTL |
+| --------------------------------- | ----------------------------- | --------- |
+| Quota exceeded (429)              | No                            | 5 min     |
+| Content blocked by safety filters | No                            | 24 h      |
+| Insufficient source content       | No                            | 1 h       |
+| Schema validation failure         | Yes (3×)                      | 60 s      |
+| Transient network error           | Yes (3×, exponential backoff) | 10 s      |
 
-# 2. Create the environment file
-cp .env.example .env
-# Fill SECRET_KEY with: openssl rand -hex 32
+### Structured Outputs
 
-# 3. Start everything
-docker compose up --build
+Summaries are returned as validated JSON rather than free text:
+
+```python
+class ArticleSummary(BaseModel):
+    key_points: list[str] = Field(min_length=2, max_length=5)
+    confidence: Literal["high", "medium", "low"]
 ```
+
+Any response that fails validation raises a typed exception and never reaches the database.
+
+### Model Selection
+
+Four Gemini variants were benchmarked on a fixed sample of 5 articles, measuring latency, schema conformity and token usage.
+
+| Model                   | Avg latency | Conformity | Tokens (in/out) |
+| ----------------------- | ----------- | ---------- | --------------- |
+| `gemini-2.5-flash`      | 4.48s       | 100%       | 3431 / 691      |
+| `gemini-3.5-flash`      | 10.86s      | 100%       | 3431 / 661      |
+| `gemini-3.5-flash-lite` | 1.20s       | 100%       | 3431 / 543      |
+| `gemini-2.5-flash-lite` | n/a         | 0% (404)   | n/a             |
+
+`gemini-3.5-flash-lite` was 3.7× faster but failed a qualitative check — it strips French accents entirely and produces vaguer summaries with fewer concrete figures. `gemini-3.5-flash` proved too slow for an interactive, on-demand feature.
+
+**Selected: `gemini-2.5-flash`** — best balance of latency, factual accuracy and French language handling.
+
+Benchmark scripts live in `backend/benchmark/`.
+
+---
+
+## Security
+
+- JWT authentication with bcrypt password hashing
+- Password strength validation (length, digit, uppercase, lowercase, special character)
+- Rate limiting via slowapi (5/min on register, 10/min on login)
+- Security headers (X-Content-Type-Options, X-Frame-Options, HSTS, X-XSS-Protection)
+- Request size limit (1 MB)
+- Security logging on failed auth attempts
+- SQL injection protection through SQLAlchemy parameterized queries
+
+---
+
+## Development Environment
+
+The project runs in Docker (PostgreSQL, Redis, FastAPI) with the Flutter app
+targeting the Android emulator or iOS simulator. The API base URL is detected
+automatically per platform.
+
+Database schema changes are handled through Alembic migrations. The test suite
+runs with pytest against an isolated in-memory SQLite database with mocked Redis.
+
+---
+
+## API Routes
+
+### Auth
+
+| Method | Route            | Description             |
+| ------ | ---------------- | ----------------------- |
+| POST   | `/auth/register` | Create an account       |
+| POST   | `/auth/login`    | Sign in — returns a JWT |
+| GET    | `/auth/me`       | Current user profile 🔒 |
+
+### Feed
+
+| Method | Route   | Description                       |
+| ------ | ------- | --------------------------------- |
+| GET    | `/feed` | Personalized feed with filters 🔒 |
+
+Query parameters: `page`, `limit`, `category`, `content_type`, `max_reading_time`, `source_bias`, `favorites_only`
+
+### Articles
+
+| Method | Route                    | Description            |
+| ------ | ------------------------ | ---------------------- |
+| GET    | `/articles/{id}`         | Article detail 🔒      |
+| GET    | `/articles/{id}/summary` | AI summary (cached) 🔒 |
+| POST   | `/articles/{id}/read`    | Mark as read 🔒        |
+
+### Users
+
+| Method          | Route              | Description                |
+| --------------- | ------------------ | -------------------------- |
+| GET/POST/DELETE | `/users/bookmarks` | Manage bookmarks 🔒        |
+| GET/POST/DELETE | `/users/sources`   | Manage favorite sources 🔒 |
+| PATCH           | `/users/me`        | Update reading style 🔒    |
+
+---
 
 ## Roadmap
 
-**Phase 1 — MVP** *(in progress)*
-- [x] Docker infrastructure + PostgreSQL + Redis
-- [x] JWT Auth (register, login)
-- [ ] Feed + articles routes
-- [ ] Python RSS scraper
-- [ ] React Native — first screens
+**Done**
 
-**Phase 2 — Personalization**
-- [ ] Relevance scoring per user profile
-- [ ] Claude API integration (teaser, explanation)
-- [ ] Rewrite scraper in Rust
-- [ ] Invite system
-- [ ] Push notifications
+- [x] Docker infrastructure (PostgreSQL, Redis, FastAPI)
+- [x] JWT authentication with rate limiting and security headers
+- [x] RSS scraper — 30 sources, URL-based deduplication, 30 min interval
+- [x] Feed with multi-criteria filtering and pagination
+- [x] Bookmarks and favorite sources
+- [x] Gemini AI summaries with structured outputs and two-level cache
+- [x] Typed exception hierarchy with adaptive retry strategies
+- [x] pytest suite — 33 tests
+- [x] LLM model benchmark
+- [x] Flutter app — feed, article, bookmarks, profile, light/dark theme
+- [x] Native article sharing
 
-**Phase 3 — Dashboard**
-- [ ] Vue.js admin dashboard
-- [ ] Source management
-- [ ] Reading stats
-- [ ] Railway + Vercel deployment
+**Next**
+
+- [ ] CI/CD with GitHub Actions
+- [ ] Password reset (requires email service)
+- [ ] Railway deployment
+- [ ] Push notifications for favorite sources
+- [ ] Rewrite RSS scraper in Rust
+- [ ] Google / Apple Sign-In
 
 ---
 
@@ -158,6 +247,7 @@ feat: new feature
 fix: bug fix
 chore: config, tooling
 docs: documentation
+test: tests
 refactor: rewrite without behavior change
 ```
 
@@ -165,4 +255,5 @@ refactor: rewrite without behavior change
 
 ## License
 
-Personal project — all rights reserved.
+All rights reserved. This code is published for portfolio purposes only.
+No permission is granted to use, copy, modify or distribute it.
