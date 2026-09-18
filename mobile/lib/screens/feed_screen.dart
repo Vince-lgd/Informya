@@ -18,6 +18,7 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   List<dynamic> _articles = [];
   bool _isLoading = true;
+  bool _hasError = false;
   int _currentPage = 1;
   bool _hasMore = true;
   String? _selectedCategory;
@@ -64,6 +65,7 @@ class _FeedScreenState extends State<FeedScreen> {
         _currentPage = 1;
         _articles = [];
         _hasMore = true;
+        _hasError = false;
       }
     });
 
@@ -92,9 +94,13 @@ class _FeedScreenState extends State<FeedScreen> {
         }
         _hasMore = result['has_more'] ?? false;
         _isLoading = false;
+        _hasError = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
     }
   }
 
@@ -205,6 +211,127 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
+  /// État affiché quand le serveur est injoignable
+  Widget _errorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.cloud_off_rounded,
+              color: AppColors.textTertiary(context),
+              size: 64,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Connexion impossible',
+              style: TextStyle(
+                color: AppColors.textSecondary(context),
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Vérifie ta connexion internet et réessaie',
+              style: TextStyle(
+                color: AppColors.textTertiary(context),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Tappable(
+              onTap: () => _loadFeed(refresh: true),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.glassFill(context),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.glassBorder(context)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.refresh_rounded,
+                          color: AppColors.textPrimary(context),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Réessayer',
+                          style: TextStyle(
+                            color: AppColors.textPrimary(context),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// État affiché quand la requête a réussi mais ne renvoie rien
+  Widget _emptyState() {
+    final isFavoritesTab = _selectedCategory == '⭐ Mes sources';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isFavoritesTab
+                  ? Icons.star_outline_rounded
+                  : Icons.newspaper_outlined,
+              color: AppColors.textTertiary(context),
+              size: 64,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isFavoritesTab
+                  ? 'Aucune source favorite'
+                  : 'Aucun article disponible',
+              style: TextStyle(
+                color: AppColors.textSecondary(context),
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isFavoritesTab
+                  ? 'Ajoute des sources via l\'étoile ⭐ sur les cartes'
+                  : 'Essaie un autre filtre ou reviens plus tard',
+              style: TextStyle(
+                color: AppColors.textTertiary(context),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   // ── Bottom sheet filtres ─────────────────────────────────
 
   void _showFilters() {
@@ -581,42 +708,10 @@ class _FeedScreenState extends State<FeedScreen> {
                             color: AppColors.textPrimary(context),
                           ),
                         )
+                      : _hasError && _articles.isEmpty
+                      ? _errorState()
                       : !_isLoading && _articles.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _selectedCategory == '⭐ Mes sources'
-                                    ? Icons.star_outline_rounded
-                                    : Icons.newspaper_outlined,
-                                color: AppColors.textTertiary(context),
-                                size: 64,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _selectedCategory == '⭐ Mes sources'
-                                    ? 'Aucune source favorite'
-                                    : 'Aucun article disponible',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary(context),
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              if (_selectedCategory == '⭐ Mes sources')
-                                Text(
-                                  'Ajoute des sources via l\'étoile ⭐ sur les cartes',
-                                  style: TextStyle(
-                                    color: AppColors.textTertiary(context),
-                                    fontSize: 14,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                            ],
-                          ),
-                        )
+                      ? _emptyState()
                       : RefreshIndicator(
                           onRefresh: () => _loadFeed(refresh: true),
                           color: AppColors.textPrimary(context),

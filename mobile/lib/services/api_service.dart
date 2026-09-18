@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -86,7 +87,14 @@ class ApiService {
     if (sourceBias != null) url += '&source_bias=$sourceBias';
     if (favoritesOnly) url += '&favorites_only=true';
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await http
+        .get(Uri.parse(url), headers: headers)
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode != 200) {
+      throw Exception('Erreur serveur: ${response.statusCode}');
+    }
+
     return jsonDecode(response.body);
   }
 
